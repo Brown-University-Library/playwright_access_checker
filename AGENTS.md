@@ -68,7 +68,7 @@ If other instruction files exist (Copilot, IDE rules, contributor docs) and conf
 
 ### HTTP and networking
 
-- Use `httpx` for all HTTP calls.
+- Use `httpx2` for all HTTP calls.
 - Do not introduce alternate HTTP libraries (e.g., `requests`, `aiohttp`) unless the repository already depends on them and there is a documented reason.
 
 ### Docstrings
@@ -149,7 +149,7 @@ When implementing a change (especially from an issue/task):
 - `main.py`: runnable template example that sums two integers, logs the total, and prints `3`. This is starter code, not an access check. `LOG_LEVEL=DEBUG` enables debug logging.
 - `tests/test.py`: `unittest` coverage of the starter example.
 - `run_tests.py`: runs all tests by default; accepts a dotted module, class, or method name and `-v` for verbose output. Run it from the repository root.
-- `pyproject.toml`: repository metadata, Python 3.12 requirement, and initial template dependencies (`httpx`, `python-dotenv`, `trio`). These packages are not used by the example yet; the `local`, `staging`, and `prod` groups are empty.
+- `pyproject.toml`: repository metadata, Python 3.12 requirement, and initial template dependencies (`httpx2`, `python-dotenv`, `trio`). These packages are not used by the example yet; the `local`, `staging`, and `prod` groups are empty.
 - `uv.lock`: resolved dependencies for this repository. Regenerate with `uv lock` when dependency declarations change.
 - `ruff.toml`: Python 3.12 target, 125-character lines, four-space indentation, and single quotes.
 - `README.md`: local installation, current usage, and dependency inventory.
