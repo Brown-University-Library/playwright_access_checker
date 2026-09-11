@@ -113,6 +113,17 @@ When implementing a change (especially from an issue/task):
 3. Update tests and run: `uv run ./run_tests.py`
 4. If you cannot run tests in your environment, still write/adjust tests and state what you would run.
 
+### Suggested issue structure
+
+When asked to draft or update an issue, prefer the following simple structure. Use the user's Goal/Context/Tasks when provided; this format also works for local requests.
+
+- **Goal:** State the intended outcome.
+- **Context:** Include relevant background, links, constraints, and current behavior. Use only public information in GitHub issues.
+- **Tasks:** List the requested actions and make clear whether the user wants advice, a plan, documentation, or implementation.
+- **Completion criteria (optional):** Add observable results or checks when they help clarify what counts as done; omit this section when the goal and tasks already make that clear.
+
+Keep the structure proportional to the work. Issues, formal templates, labels, preliminary discussions, and decision comments are not prerequisites for authorized local work.
+
 ### Commit messages
 
 - Group related files into logical, focused commits; do not require a separate commit for every file.
