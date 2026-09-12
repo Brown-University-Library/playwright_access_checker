@@ -2,13 +2,13 @@
 
 Initial proposal by Codex, 2026-09-11, for [issue #5: Develop design plan](https://github.com/birkin/playwright_access_checker/issues/5). Work branch: `issue-5-develop-design-plan`.
 
-This task produces a plan only. Application implementation, live frequency trials, and network setup are future work. This revision incorporates the maintainer's feedback through commit `70f23b5`: application design A is selected, and both browsing workflows below belong in the initial implementation. Review paused at “Collection access and browser behavior”; later sections have been updated for consistency and remain subject to review. Repository conventions are in [AGENTS.md](AGENTS.md).
+This task produces a plan only. Application implementation, live frequency trials, and network setup are future work. This revision incorporates the maintainer's feedback through commit `70f23b5`: both browsing workflows below belong in the initial implementation. Review paused at “Collection access and browser behavior”; later sections have been updated for consistency and remain subject to review. Repository conventions are in [AGENTS.md](AGENTS.md).
 
 Contents:
 
 - [Purpose and recommended starting point](#purpose-and-recommended-starting-point)
 - [Trial procedure and timing](#trial-procedure-and-timing)
-- [Two application designs](#two-application-designs)
+- [Application design](#application-design)
 - [Collection access and browser behavior](#collection-access-and-browser-behavior)
 - [Recognizing interference and counting requests](#recognizing-interference-and-counting-requests)
 - [Configuration and results](#configuration-and-results)
@@ -67,16 +67,13 @@ Exercise both workflows under a recorded configuration in separate trials. For `
 
 Retain trials with no interference alongside challenged or denied trials, showing their observed duration and workload; retain inconclusive and partial trials with their limitations. Together these supply evidence about the effects of the existing configuration for discussion with Central IT. Once Central IT changes settings, use a new configuration label and effective time, then compare the same paces and recorded conditions after the expected cooldown or on another documented exit. Changing IP also changes a condition; do not combine results from unlike networks into a single threshold. A short manually operated browser session can later help assess how well the scripted workflow represents researcher behavior.
 
-## Two application designs
+## Application design
 
-| Design | How it works | Advantages | Costs and limits |
-| --- | --- | --- | --- |
-| **A. One-command browser-led runner — selected by the maintainer** | One CLI command opens the collection, selects thumbnail links in the browser, carries out either requested workflow, and writes the report. A few small modules separate configuration, browser actions, timing, and results. | Small implementation; collection browsing and item access share one measured session and route; easy to watch; no database or asynchronous framework. | Collection discovery consumes requests in each run. Listing changes can change the workload. Thumbnail and return-link selectors need maintenance. |
-| **B. Separate discovery and trial commands — deferred alternative** | A discovery command saves an ordered item-list file; a trial command uses that file as input. Discovery could use the public collection API, with `httpx2` as required by repository guidance. | Reuses an exact intended item list across trials; easier later comparison and replay. | More commands, file validation, and stale-list handling. Reproducing thumbnail clicks and returns would still require matching the saved items to the current overview. Discovery outside the measured session needs its IP and time recorded. |
+One CLI command opens the collection, selects thumbnail links in the browser, carries out either requested workflow, and writes the report. Both browsing workflows are part of this application. A few small modules separate configuration, browser actions, timing, and results. Collection browsing and item access share one measured session and network route, keeping the implementation small and easy to watch.
 
-Implement A first, as requested. The choice between A and B concerns preparing the item list; the two browsing workflows are both part of A. Save the selected list in each run's results for comparison. Use one sequence of operator-like actions; the multi-tab workflow deliberately permits overlapping browser loads without adding concurrent application workers, queues, or a service.
+Collection discovery consumes requests in each run, and changes to the listing can change the workload. Thumbnail and return-link selectors need maintenance. Save the selected list in each run's results for comparison. Use one sequence of operator-like actions; the multi-tab workflow deliberately permits overlapping browser loads without adding concurrent application workers, queues, or a service.
 
-Suggested organization for A:
+Suggested organization:
 
 - `main.py`: argument parsing and orchestration only.
 - `config.py`: `.env`, environment, CLI precedence, validation, and redacted configuration snapshot.
@@ -84,7 +81,7 @@ Suggested organization for A:
 - `measurement.py`: seeded intervals, event classification, and window counts.
 - `results.py`: incremental event output and final summaries, including partial-run recovery.
 
-Use the repository's pinned Python runtime and `uv`. Add Playwright and its Chromium installation during implementation; retain `python-dotenv`. Review unused inherited dependencies then. Browser navigation and page-generated fetches belong to Playwright; any separately authored HTTP calls must use `httpx2`. A separate HTTP client is not needed for design A's browsing workload. Start with synchronous Playwright and an event-aware action loop; verify that opening tabs and checking readiness preserve the requested pace before live trials. Playwright documents multiple pages within a browser context and both synchronous and asynchronous APIs. [Playwright pages](https://playwright.dev/python/docs/pages).
+Use the repository's pinned Python runtime and `uv`. Add Playwright and its Chromium installation during implementation; retain `python-dotenv`. Review unused inherited dependencies then. Browser navigation and page-generated fetches belong to Playwright; any separately authored HTTP calls must use `httpx2`. A separate HTTP client is not needed for the planned browsing workload. Start with synchronous Playwright and an event-aware action loop; verify that opening tabs and checking readiness preserve the requested pace before live trials. Playwright documents multiple pages within a browser context and both synchronous and asynchronous APIs. [Playwright pages](https://playwright.dev/python/docs/pages).
 
 ## Collection access and browser behavior
 
@@ -244,7 +241,7 @@ The items below are candidate implementation issues to create after review of th
 | Candidate issue | Initial lightweight work | Later work or concern |
 | --- | --- | --- |
 | **Confirm the Studio browsing contract** | Verify one representative public collection, identifier/URL forms, thumbnail order, every-other-item selection, scrolling/lazy loading, actual back-to-collection links, new-tab link behavior, readiness signals, and relevant hostnames. Obtain sanitized example challenge/denial responses if available. | Automatic listing pagination, recursive subcollections, searches, downloads, image next-page navigation, and complex viewer interactions. |
-| **Implement configuration and both browsing workflows** | Select design A. Add CLI/`.env` validation, shared thumbnail selection, seeded opening/viewing timings, one headed browser/context, `tabs` and `return`, normal assets, fixed optional proxy, duration/item/scroll limits, pending-tab handling, and graceful interruption. | Reusable discovery command, additional workflows/browser types, persisted profiles, automated trial batches, exact mean balancing. |
+| **Implement configuration and both browsing workflows** | Add CLI/`.env` validation, shared thumbnail selection, seeded opening/viewing timings, one headed browser/context, `tabs` and `return`, normal assets, fixed optional proxy, duration/item/scroll limits, pending-tab handling, and graceful interruption. | Additional workflows/browser types, persisted profiles, automated trial batches, exact mean balancing. |
 | **Implement evidence and reports** | Observe requests and interference across all tabs from their first requests; record actions, origins, readiness and viewing separately; stop all actions at the first signal; preserve partial results; use local Eastern timestamps; calculate all four windows/checkpoints; include checked URLs, comparison rows, and known unknowns. | Central IT log integration, optional reviewed screenshots/traces, report comparison UI, richer challenge recovery analysis. |
 | **Verify the measurement before live comparisons** | Focused `unittest` tests and a local browser fixture for both workflows, including slow background loads and activation-related traffic; then a small manually observed BDR trial of each workflow under agreed settings when implementation is authorized. Compare event order/counts and actual behavior with browser evidence and Central IT's available logs. | Broader collection/browser coverage, repeated configuration studies, longer cooldown studies. |
 | **Document one controlled exit setup separately** | Manual exit selection and verification, fixed exit per run, explicit network records, and a check that selected exits receive the intended Cloudflare rules. | Tor experimentation or container packaging as separate setup work. |
