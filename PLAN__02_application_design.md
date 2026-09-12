@@ -17,7 +17,7 @@ Contents:
 
 ## Purpose and recommended starting point
 
-Build a repeatable way to describe when a researcher-like browsing session encounters access interference under a user-supplied Cloudflare configuration. Central IT should receive the date, configuration reference, browsing conditions, counts, and evidence needed to investigate the event.
+Build a repeatable way to describe when a researcher-like browsing session encounters access interference for an existing Cloudflare configuration. Purpose: to gather objective data for when we work with Central IT to make Cloudflare configuration changes. Objective: for a given Cloudflare configuration, for us to be able to supply the date, urls-checked, and multiple access-frequency data-points -- to assess the real-world implications of a given configuration.
 
 Recommend a Python CLI using synchronous Playwright, one visible Chromium browser, one fresh browser context per trial, and one tab. Each run accepts one collection identifier and one target average interval. Record requests from the first collection access, open item pages sequentially, and stop at the first relevant challenge, denial, error, or run limit. Write local JSON records and a readable Markdown report. Change network exits manually between trials using a separate setup.
 
