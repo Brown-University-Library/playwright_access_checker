@@ -68,6 +68,8 @@ Retain trials with no interference alongside challenged or denied trials, showin
 
 Choose A first because it directly matches the requested collection-to-browser workflow and keeps installation and use simple. Save the ordered list in its results so B can be added without changing the measurement definitions. Both designs keep application navigation sequential; neither needs concurrent workers, queues, or a service.
 
+BIRKIN_FEEDBACK: Choose A -- it meshes well with the description of a reported block that I mentioned above.
+
 Suggested organization for A:
 
 - `main.py`: argument parsing and orchestration only.
@@ -89,6 +91,26 @@ Initial discovery should:
 - Stop discovery at the item limit, listing-page limit, end of listing, run deadline, or access interference. Record whether enumeration was complete or capped.
 - Recognize nested-collection-only and empty collections explicitly. They should produce an explanation, not an accidental crawl of unrelated collections.
 - Save the collection URL, ordered item URLs, discovery duration, and discovered count for comparison. Do not claim a five-minute item-browsing observation if discovery or an exhausted list prevented it.
+
+- BIRKIN_FEEDBACK: Let's have two workflows, both of which will be exercised.
+    - First workflow... (I'll give roughly real human numbers -- but of course the purpose will be to vary them to explore failure)
+        - The researcher will go to the collection-pid. That page will load a list of items.
+        - The researcher right-clicks, about 1-second-apart, every other item-thumbnail on the collection page, to be opened in a separate tab -- up to 20 items.
+        - The researcher than spends about 5 seconds examining each page(-tab). I'm aware this may not be useful for playwright to mimic if it's determined that info is only loaded on the instantiation of the tab; I'm just describing a workflow.
+        - End.
+    - Second workflow...
+        - The researcher will go to the collection-pid. That page will load a list of items. (Same as first workflow.)
+        - The researcher does the following 20-times -- in the same tab:
+            - Open a thumbnail.
+            - Examines it for five seconds.
+            - Hits the back-to-collection link to see the thumbnail overview again.
+            - Scrolls if necessary to find the next item.
+            - Clicks that thumbnail.
+            - Examines it for five seconds.
+            - etc.
+        - Notes:
+            - Give the same collection as in the first workflow, and that the order of the thumbnails is the same, the same every-other-item selection mechanism should be used for both workflows (ie either first, third, fifth -- or second, fourth, sixth).
+            - We're soon rolling out a new feature that researchers might like: being on an image and selecting "nex-page". Ignore that for now -- and assume that to get to a different page you need to click a url that gets you back to an overview.
 
 For the first version, navigate directly to the discovered item URLs in the same tab. This represents a researcher working through a prepared list of item links. It does not model returning to the collection between every item, searching, opening downloads, or using viewers deeply. Those actions produce different workloads and can be separate future browsing profiles.
 
