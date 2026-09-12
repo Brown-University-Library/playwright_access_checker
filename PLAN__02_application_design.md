@@ -20,10 +20,13 @@ Contents:
 Build a repeatable way to describe when a researcher-like browsing session encounters access interference for an existing Cloudflare configuration. Purpose: to gather objective data for when we work with Central IT to make Cloudflare configuration changes. Objective: for a given Cloudflare configuration, for us to be able to supply the date, urls-checked, and multiple access-frequency data-points -- to assess the real-world implications of a given configuration.
 
 Recommend a Python CLI using synchronous Playwright, one visible Chromium browser, one fresh browser context per trial, and one tab. Each run accepts one collection identifier and one target average interval. Record requests from the first collection access, open item pages sequentially, and stop at the first relevant challenge, denial, error, or run limit. Write local JSON records and a readable Markdown report. Change network exits manually between trials using a separate setup.
+- BIRKIN-FEEDBACK: you noted "one tab". My sense is that, for a recent "blocked" report we got, the researcher accessed a  particular collection that contains thumbnail-links to item-pages. My understanding is that the researcher right-clicked to open (one after another) numerous thumbnail-links to open each item-page in its own tab for future review. This will become one interaction-flow that we'll have playwright test. We'll likely have others.
 
 The user's clarification calls for variation around the target pace: for example, intervals between 4.5 and 5.5 seconds for an average of five seconds. This plan recommends seeded pseudorandom variation, so the intended sequence can be reproduced. Other details below remain design proposals.
 
 An observed block is a result under recorded conditions, not proof of a universal request threshold. Cloudflare's bot assessment can use headers, session characteristics, and browser signals; its rate-limiting rules can count selected traffic using characteristics beyond IP address. Small timing variations model browsing rhythm but do not establish equivalence to a human-operated browser. [Cloudflare bot scores](https://developers.cloudflare.com/bots/concepts/bot-score/), [rate-limiting parameters](https://developers.cloudflare.com/waf/rate-limiting-rules/parameters/).
+- BIRKIN-FEEDBACK: Good point -- there will be many things we can control for (ie we will be able to configure headers and many browser-indicators) -- but the end-report should contain a section listing factors we're aware of that we don't know about (ie -- if we were to use TOR for getting a new IP, it's possible that Cloudflare may have different sensitivities for traffic coming from different IP regaions). This section isn't intended to be an exhaustive list of everything we can imagine we don't know -- simply a way to remind ourselves of the limits of the evidence we're gathering.
+
 
 ## Trial procedure and timing
 
@@ -40,8 +43,10 @@ The initial successful collection visit establishes observed access, not an empt
 ### Timing definition
 
 The interval is measured from the start of one item navigation to the start of the next. It is not an extra five-second sleep after page loading. Collection listing navigations use the same pacing rule, with their own recorded intervals; the transition into item browsing also includes a paced wait.
+- BIRKIN-FEEDBACK: yes -- this is important, given my "multiple-tab" comment on your "one-tab" text, above.
 
 For target interval `T` and variation `J`, draw each planned interval independently from a uniform distribution between `T - J` and `T + J`, using a recorded integer seed. Require finite values with `T > 0` and `0 <= J < T`. For `T=5` and `J=0.5`, the expected mean is five seconds; a finite trial will usually have a slightly different mean. Record the planned sequence and the achieved intervals. Exact mean balancing can be added later if needed; it is unnecessary for the first version.
+- BIRKIN-FEEDBACK: agreed; we're not mixing dangerous chemicals -- a good ballpark effort is good-enough.
 
 Use a monotonic clock for elapsed times and UTC timestamps for correlation with Central IT. Schedule the next navigation relative to the previous actual start. Wait for both the scheduled time and a ready page, including a short minimum viewing time after readiness (proposed default: one second). If a slow page prevents the planned interval, record the overrun and proceed when ready. Do not launch overlapping navigations or accelerate later actions to recover lost time. Report the achieved mean and range prominently.
 
