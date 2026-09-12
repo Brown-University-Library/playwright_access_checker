@@ -49,6 +49,7 @@ For target interval `T` and variation `J`, draw each planned interval independen
 - BIRKIN-FEEDBACK: agreed; we're not mixing dangerous chemicals -- a good ballpark effort is good-enough.
 
 Use a monotonic clock for elapsed times and UTC timestamps for correlation with Central IT. Schedule the next navigation relative to the previous actual start. Wait for both the scheduled time and a ready page, including a short minimum viewing time after readiness (proposed default: one second). If a slow page prevents the planned interval, record the overrun and proceed when ready. Do not launch overlapping navigations or accelerate later actions to recover lost time. Report the achieved mean and range prominently.
+- BIRKIN-FEEDBACK: no UTC timestamps; use local-EST timestamps
 
 Readiness means the expected collection or item content is visible, within a bounded timeout. Check for challenges and denials while waiting. Use navigation and locator waits, rather than treating a fixed sleep or `networkidle` as evidence of success. During deliberate pacing waits in synchronous Playwright, use short Playwright waits that continue processing browser events, rechecking the stop condition and deadline between them. Playwright documents both its readiness behavior and the problem with blocking its event processing using `time.sleep()`. [Page API](https://playwright.dev/python/docs/api/class-page), [library guidance](https://playwright.dev/python/docs/library#timesleep-leads-to-outdated-state).
 
