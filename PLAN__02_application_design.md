@@ -2,7 +2,7 @@
 
 Initial proposal by Codex, 2026-09-11, for [issue #5: Develop design plan](https://github.com/birkin/playwright_access_checker/issues/5). Work branch: `issue-5-develop-design-plan`.
 
-This task produces a plan only. Application implementation, live frequency trials, and network setup are future work. This revision incorporates the maintainer's feedback through commit `06ba65d`: application design A is selected, and both browsing workflows below belong in the initial implementation. Review paused at “Collection access and browser behavior”; later sections have been updated for consistency and remain subject to review. Repository conventions are in [AGENTS.md](AGENTS.md).
+This task produces a plan only. Application implementation, live frequency trials, and network setup are future work. This revision incorporates the maintainer's feedback through commit `70f23b5`: application design A is selected, and both browsing workflows below belong in the initial implementation. Review paused at “Collection access and browser behavior”; later sections have been updated for consistency and remain subject to review. Repository conventions are in [AGENTS.md](AGENTS.md).
 
 Contents:
 
@@ -19,10 +19,12 @@ Contents:
 
 Build a repeatable way to describe when a researcher-like browsing session encounters access interference for an existing Cloudflare configuration. Purpose: to gather objective data for when we work with Central IT to make Cloudflare configuration changes. Objective: for a given Cloudflare configuration, for us to be able to supply the date, urls-checked, and multiple access-frequency data-points -- to assess the real-world implications of a given configuration.
 
-Use a Python CLI with synchronous Playwright, one visible Chromium browser, and one fresh browser context per trial. Each run accepts one collection identifier, one workflow, and that workflow's timing settings. Both initial workflows select every other item thumbnail, up to 20 items: **open separate tabs, then review them**, and **open, review, and return to the overview in one tab**. The first models the maintainer's description of a researcher opening numerous item tabs before being blocked. Exercise both workflows in separate trials. Record requests from the first collection access and stop all further browsing actions at the first relevant challenge, denial, error, or observation deadline. Write local JSON records and a readable Markdown report. Change network exits manually between trials using a separate setup.
-- BIRKIN-FEEDBACK: This line: """Both initial workflows select every other item thumbnail, up to 20 items: open separate tabs, then review them, and open, review, and return to the overview in one tab.""" -- is confusing. It does not make clear that: 
-    - The first workflow opens each _item_, quickly, in a separate tab -- before going to the first item to inspect it.
-    - The second workflow does everything in one tab sequentially.
+Use a Python CLI with synchronous Playwright, one visible Chromium browser, and one fresh browser context per trial. Each run accepts one collection identifier, one workflow, and that workflow's timing settings. Both initial workflows select every other item thumbnail, up to 20 items, and follow these distinct sequences:
+
+1. **Workflow 1 (`tabs`): Open all selected items in separate tabs first; then inspect them.** Stay on the collection overview while opening the selected thumbnail links rapidly, about one second apart, each in its own new tab. Only after the selected item tabs have been opened, switch to the first item tab and inspect it for about five seconds, then inspect each remaining item tab in opening order.
+2. **Workflow 2 (`return`): Inspect each item before opening the next, using one tab throughout.** From the collection overview, open one selected thumbnail in the current tab, inspect that item for about five seconds, and follow its back-to-collection link in the same tab. Scroll if needed, then open the next selected thumbnail and repeat the open/inspect/return sequence.
+
+The first workflow models the maintainer's description of a researcher opening numerous item tabs before being blocked. Exercise both workflows in separate trials. Record requests from the first collection access and stop all further browsing actions at the first relevant challenge, denial, error, or observation deadline. Write local JSON records and a readable Markdown report. Change network exits manually between trials using a separate setup.
 
 Use seeded pseudorandom variation around the selected timing values, so the intended sequence can be reproduced. The maintainer accepts an approximate average; exact mean balancing is unnecessary. The workflows and application choice are requested behavior; the detailed settings and implementation choices below remain design proposals.
 
