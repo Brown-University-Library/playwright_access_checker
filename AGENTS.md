@@ -142,11 +142,28 @@ Keep the structure proportional to the work. Issues, formal templates, labels, p
 - Use issues to organize pieces of work with one clear outcome, and create a branch for each issue's file changes. Include the issue number and a short description in the branch name, and record it in work reports.
 - Work directly from the current user request. If work starts locally, create the issue and associated branch when practical; do not wait for preliminary discussion or decision comments before doing authorized work.
 - When authorized, use issue comments to preserve the initial prompt, substantive follow-up prompts, and a narrative of Codex's responses and work at useful milestones. Every local exchange does not need a GitHub update.
-- Link relevant commits and pull requests when available, report remaining work, and close the issue when its intended outcome is complete.
+- Save requested plans, documentation, and code changes locally on the issue branch, leaving them uncommitted for the user's review unless the user explicitly requests a commit. Report the files changed, checks performed, and anything needing review; link existing commits and pull requests when relevant.
+- Keep the issue open for review and iteration. The user may ask questions, explain manual changes, request revisions, or request more information in comments. A finished draft or implementation report does not mean the user has accepted the work or wants the issue closed.
 - See [the development approach plan](PLAN__01_github_development_approach.md) for the lightweight pattern being tried. Keep it consistent with this file.
+
+### Commit authorization
+
+- Create or amend a commit only when the user explicitly asks Codex to commit the changes in question. This applies to Git commands and equivalent tools or APIs. A request to develop a plan, implement a change, save files, create a branch, post a summary, or finish the work does not authorize a commit.
+- Review approval, a suggested commit message, or the user saying they might commit the work is not an instruction for Codex to commit. Commit-message conventions below describe how to write an authorized commit; they do not grant permission to make one.
+- Apply an explicit commit instruction only to its stated changes and scope. Permission for an earlier task or commit does not automatically cover later revisions. Do not ask again when the current changes are already covered by clear authorization.
+- If commit authorization is absent or unclear, finish the authorized local work and report that it is ready for review and uncommitted. Do not delay that work to ask whether to commit.
+- Permission to commit does not by itself authorize pushing, creating or merging a pull request, or closing an issue. Follow the user's instructions for each action separately.
+
+### Issue closure and review
+
+- Only the user closes issues unless the user specifically asks Codex to close an identified issue. Keep issues open by default, even after requested work, tests, review, commits, pushes, or merges are complete. A request to finish the task or approval of a plan is not permission to close the issue.
+- Without that specific request, do not close issues through the GitHub UI, CLI, API, tools, or a comment-and-close action. Do not arrange automatic closure through commit messages, pull-request descriptions, Development links, or automation.
+- Unless issue closure is explicitly authorized, use ordinary references such as `Refs #6` or an issue URL. Do not use closing keywords such as `Closes`, `Fixes`, or `Resolves` with an issue reference in commit messages or pull-request descriptions, or add links that close the issue when merged. Before an authorized merge, check for existing automatic closure instructions and links; do not merge if it would close an issue without the user's specific authorization. See [GitHub's issue-linking documentation](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue).
+- For planning work, the default sequence is: develop and save the plan locally; post a summary if authorized; leave the changes uncommitted and the issue open for the user's review. Continue revisions and discussion as requested, preserving the user's manual edits. The user decides whether and when to commit, continue iterating, and eventually close the issue; these are separate decisions.
 
 ### Commit messages
 
+- Apply these conventions only after the user has authorized a commit under [Commit authorization](#commit-authorization).
 - Group related files into logical, focused commits; do not require a separate commit for every file.
 - Keep each commit message brief, with no more than ten words.
 - Write messages in the present tense so they complete the phrase "This commit..." Begin with a fitting verb such as "Adds," "Implements," or "Updates."
@@ -160,7 +177,7 @@ Keep the structure proportional to the work. Issues, formal templates, labels, p
 - Begin comments with `Codex response` and identify the response type, such as **answer**, **advice**, **proposal**, **prompt record**, or **implementation report**. Clearly distinguish an agent proposal from an accepted maintainer decision.
 - Apply [GitHub attribution](#github-attribution) to all GitHub posts and text updates, not only comments. For issue creation from a user prompt, follow [Issue bodies and exact prompts](#issue-bodies-and-exact-prompts).
 - When asked to add a prompt as a comment, preserve the user's wording in a Markdown blockquote under `Codex response — **prompt record**`. Identify it as a prompt from the local work session. Keep any explanation outside the quotation; do not replace the prompt with an implementation summary.
-- For implementation reports, describe what changed, what was verified, any remaining work, and whether changes are local, committed, or pushed. Report only actions and checks actually completed.
+- For implementation reports, describe what changed, what was verified, any remaining work or review, and whether changes are local, committed, or pushed. Distinguish work ready for review from work accepted by the user, and state that the issue remains open for review when applicable. Posting a report does not authorize a commit or issue closure. Report only actions and checks actually completed.
 - Follow [Privacy and publication](#privacy-and-publication), including when quoting prompts. Use relative paths or variable names; if a quoted prompt needs redaction, mark the omission explicitly.
 - Use a structured comment-body argument when available. If using `gh`, put multiline Markdown in a temporary file and pass it with `--body-file` so newlines, backticks, and other literal text are preserved.
 - Verify that the posted comment contains the intended text and return its direct link. If a posting attempt has an uncertain result, check the issue comments before retrying to avoid duplicates.
@@ -179,6 +196,7 @@ Keep the structure proportional to the work. Issues, formal templates, labels, p
 
 - Do not ask questions unless absolutely necessary to proceed.
 - Make reasonable assumptions, state them explicitly, then implement.
+- Do not assume permission to commit or close an issue. When that permission is absent or unclear, complete the authorized local work, leave it uncommitted, and keep the issue open as described above.
 - If blocked, provide:
   - what you tried
   - what you found in the repo
@@ -195,7 +213,7 @@ Keep the structure proportional to the work. Issues, formal templates, labels, p
 - `uv.lock`: resolved dependencies for this repository. Regenerate with `uv lock` when dependency declarations change.
 - `ruff.toml`: Python 3.12 target, 125-character lines, four-space indentation, and single quotes.
 - `README.md`: local installation, current usage, and dependency inventory.
-- `PLAN__01_github_development_approach.md`: lightweight development pattern being tried: issues organize work, branches contain associated changes, and authorized comments preserve prompts and work reports. It is consistent with this file and does not require preliminary discussion before authorized local work.
+- `PLAN__01_github_development_approach.md`: lightweight development pattern being tried: issues organize work, branches contain associated changes, and authorized comments preserve prompts and work reports. Changes stay local and uncommitted for review unless the user explicitly requests a commit; issues stay open unless the user specifically asks Codex to close them. It is consistent with this file and does not require preliminary discussion before authorized local work.
 - The enclosing `playwright_access_checker_stuff/` directory is outside the Git repository.
 - TODO: define access-check inputs, authentication needs, result format, and browser workflow before replacing the example and adding Playwright.
 - TODO: review the inherited dependency list when the checker is implemented; retain only packages needed by the resulting code.
