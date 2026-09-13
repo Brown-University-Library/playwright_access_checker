@@ -3,9 +3,9 @@ Runs tests for playwright_access_checker.
 
 Usage examples:
     (all) uv run ./run_tests.py
-    (file) uv run ./run_tests.py tests.test
-    (class) uv run ./run_tests.py tests.test.TestMain
-    (method) uv run ./run_tests.py tests.test.TestMain.test_sum_two_numbers_returns_total
+    (file) uv run ./run_tests.py tests.test_measurement
+    (class) uv run ./run_tests.py tests.test_measurement.TestMeasurement
+    (method) uv run ./run_tests.py tests.test_measurement.TestMeasurement.test_selection
 
     Also takes a -v or --verbose flag to increase verbosity to level 2, which yields:
     name of test being run

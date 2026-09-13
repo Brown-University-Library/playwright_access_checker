@@ -1,37 +1,33 @@
 """
-Provides the starter example for playwright_access_checker.
-
-TODO: replace the summing example when the access-checking workflow is defined.
+Runs one configured access trial or previews and rebuilds local results.
 """
 
-import logging
-import os
+import json
+import sys
 
-logging.basicConfig(
-    level=logging.DEBUG if os.getenv('LOG_LEVEL') == 'DEBUG' else logging.INFO,
-    format='[%(asctime)s] %(levelname)s [%(module)s-%(funcName)s()::%(lineno)d] %(message)s',
-    datefmt='%d/%b/%Y %H:%M:%S',
-)
-log = logging.getLogger(__name__)
-
-
-def sum_two_numbers(first_number: int, second_number: int) -> int:
-    """
-    Sums two numbers.
-    Called by: main()
-    """
-    total = first_number + second_number
-    return total
+from lib.config import ROOT, public_settings, read_settings
+from lib.results import rebuild_report
 
 
 def main() -> None:
     """
-    Runs a tiny summing example.
+    Parses options and calls settings, browser, or offline reporting helpers.
     Called by: module guard
     """
-    total = sum_two_numbers(1, 2)
-    log.info('total, ``%s``', total)
-    print(total)
+    settings, args = read_settings()
+    if args.rebuild_report:
+        rebuild_report((ROOT / args.rebuild_report).resolve())
+        print('Rebuilt run.json and summary.md from saved events.')
+    elif args.preview:
+        print(json.dumps(public_settings(settings), indent=2, allow_nan=False))
+    else:
+        from lib.browser_flow import run_trial
+
+        recorder = run_trial(settings)
+        print(f'Trial {recorder.trial_id}: {recorder.metadata["stop_reason"]}')
+        print(f'Results: {settings.output_dir}/{recorder.trial_id}/summary.md')
+        reason = recorder.metadata['stop_reason']
+        sys.exit(0 if reason == 'workflow_complete' else 130 if reason == 'user_interrupted' else 1)
 
 
 if __name__ == '__main__':

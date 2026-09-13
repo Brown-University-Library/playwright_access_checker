@@ -88,10 +88,10 @@ Gathering collection links makes requests during each run, and changes to the li
 Suggested file responsibilities:
 
 - `main.py`: read command-line options and call the other functions.
-- `config.py`: choose and validate settings from the command line, environment, and `../.env`; save the chosen settings without secrets.
-- `browser_flow.py`: find the collection page, select thumbnails, carry out both workflows, track tabs, and check when pages are ready.
-- `measurement.py`: generate repeatable timing values, classify observations, and count requests over the specified periods.
-- `results.py`: save events as they happen and write summaries under `../runs/<trial-id>/`, including results from interrupted runs.
+- `lib/config.py`: choose and validate settings from the command line, environment, and `../.env`; save the chosen settings without secrets.
+- `lib/browser_flow.py`: find the collection page, select thumbnails, carry out both workflows, track tabs, and check when pages are ready.
+- `lib/measurement.py`: generate repeatable timing values, classify observations, and count requests over the specified periods.
+- `lib/results.py`: save events as they happen and write summaries under `../runs/<trial-id>/`, including results from interrupted runs.
 
 Use the Python version specified in the repository and run it with `uv`. Add Playwright and its Chromium browser during implementation; keep `python-dotenv`. Review any inherited packages that the app does not need. Browser requests belong to Playwright; any separately written HTTP calls must use `httpx2`, as the repository requires. The planned browsing does not need a separate HTTP client. Start with Playwright's synchronous Python API: the main loop takes the next action while continuing to process notifications from all tabs. Verify that opening tabs and checking page content preserve the requested pace before trials against BDR. [Playwright pages](https://playwright.dev/python/docs/pages).
 

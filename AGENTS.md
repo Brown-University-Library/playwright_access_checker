@@ -21,7 +21,7 @@ If other instruction files exist (Copilot, IDE rules, contributor docs) and conf
 ## Project basics
 
 - Repository: `playwright_access_checker`
-- Current state: script starter files only; Playwright access checks are not implemented yet.
+- Current state: a Playwright CLI runs one Studio browsing trial using either the `tabs` or `return` workflow and saves local evidence.
 - Primary language: Python
 - Target runtime: Python 3.12 -- unless a `pyproject.toml` specifies a different version
 - Dependency / execution tool: `uv`
@@ -32,7 +32,8 @@ If other instruction files exist (Copilot, IDE rules, contributor docs) and conf
 
 - Assume user is in the project-root directory.
 - Do not use `python` to run scripts.
-- Run the current example via: `uv run ./main.py`
+- Preview settings via: `uv run ./main.py bdr:224400 --workflow tabs --preview`
+- Configure `../.env` as described in `README.md`, then run one trial via: `uv run ./main.py bdr:224400 --workflow tabs`
 - Run tests via:
     - `uv run ./run_tests.py`
         - Note that `run_tests.py` has usage instructions about how to run more granular tests.
@@ -206,17 +207,22 @@ Keep the structure proportional to the work. Issues, formal templates, labels, p
 ## Agent project index
 
 - Source template: [script_project](https://github.com/birkin/birkin_coding_tools/tree/main/script_project/); incorporation is tracked in [issue #2](https://github.com/birkin/playwright_access_checker/issues/2).
-- `main.py`: runnable template example that sums two integers, logs the total, and prints `3`. This is starter code, not an access check. `LOG_LEVEL=DEBUG` enables debug logging.
-- `tests/test.py`: `unittest` coverage of the starter example.
+- `main.py`: CLI for one trial, offline settings preview, or rebuilding a report from saved events.
+- `lib/config.py`: validates settings in CLI/environment/`../.env`/default order; omits proxy credentials from saved settings. Resolves paths from the repository root above `lib/`.
+- `lib/browser_flow.py`: shared thumbnail selection, actual link clicks, both workflows, timed viewing and scrolling, and result-saving on interruption.
+- `lib/observation.py`: context-wide request recording, late tab attribution, content checks, and the shared stopping condition.
+- `lib/measurement.py`: repeatable timings, URL redaction, response classification, and monotonic request-count periods.
+- `lib/results.py`: flushed JSONL events, JSON checkpoints, readable reports, and offline report rebuilding under `../runs/` by default.
+- `.env.example`: placeholder settings for the outer `../.env`; do not overwrite existing local settings.
+- `tests/`: `unittest` coverage of settings and measurements plus a loopback-only website exercising both workflows with Chromium. Automated tests do not contact BDR. Browser tests require `uv run playwright install chromium` and permission to bind a local port.
 - `run_tests.py`: runs all tests by default; accepts a dotted module, class, or method name and `-v` for verbose output. Run it from the repository root.
-- `pyproject.toml`: repository metadata, Python 3.12 requirement, and initial template dependencies (`httpx2`, `python-dotenv`, `trio`). These packages are not used by the example yet; the `local`, `staging`, and `prod` groups are empty.
+- `pyproject.toml`: repository metadata, Python 3.12 requirement, and application dependencies (`playwright`, `python-dotenv`); the `local`, `staging`, and `prod` groups are empty. The app makes no separate HTTP-client calls.
 - `uv.lock`: resolved dependencies for this repository. Regenerate with `uv lock` when dependency declarations change.
 - `ruff.toml`: Python 3.12 target, 125-character lines, four-space indentation, and single quotes.
 - `README.md`: local installation, current usage, and dependency inventory.
 - `PLAN__01_github_development_approach.md`: lightweight development pattern being tried: issues organize work, branches contain associated changes, and authorized comments preserve prompts and work reports. Changes stay local and uncommitted for review unless the user explicitly requests a commit; issues stay open unless the user specifically asks Codex to close them. It is consistent with this file and does not require preliminary discussion before authorized local work.
 - The enclosing `playwright_access_checker_stuff/` directory is outside the Git repository.
-- TODO: define access-check inputs, authentication needs, result format, and browser workflow before replacing the example and adding Playwright.
-- TODO: review the inherited dependency list when the checker is implemented; retain only packages needed by the resulting code.
+- `PLAN__02_application_design.md`: design reference for the CLI implemented under issue #9. Cloudflare comparisons require recorded conditions; connection management remains separate.
 - Follow [Privacy and publication](#privacy-and-publication) when maintaining this index.
 
 ---
