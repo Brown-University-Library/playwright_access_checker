@@ -84,10 +84,10 @@ Gathering collection links makes requests during each run, and changes to the li
 Suggested file responsibilities:
 
 - `main.py`: read command-line options and call the other functions.
-- `config.py`: choose and validate settings from the command line, environment, and `.env`; save the chosen settings without secrets.
+- `config.py`: choose and validate settings from the command line, environment, and `../.env`; save the chosen settings without secrets.
 - `browser_flow.py`: find the collection page, select thumbnails, carry out both workflows, track tabs, and check when pages are ready.
 - `measurement.py`: generate repeatable timing values, classify observations, and count requests over the specified periods.
-- `results.py`: save events as they happen and write summaries, including results from interrupted runs.
+- `results.py`: save events as they happen and write summaries under `../runs/<trial-id>/`, including results from interrupted runs.
 
 Use the Python version specified in the repository and run it with `uv`. Add Playwright and its Chromium browser during implementation; keep `python-dotenv`. Review any inherited packages that the app does not need. Browser requests belong to Playwright; any separately written HTTP calls must use `httpx2`, as the repository requires. The planned browsing does not need a separate HTTP client. Start with Playwright's synchronous Python API: the main loop takes the next action while continuing to process notifications from all tabs. Verify that opening tabs and checking page content preserve the requested pace before trials against BDR. [Playwright pages](https://playwright.dev/python/docs/pages).
 
@@ -175,7 +175,9 @@ Include comparable rows for 60, 120, and 300 seconds, stating how much of each p
 
 ## Settings and results
 
-Choose settings in this order: explicit command-line options, then environment variables available to the program, then the selected `.env` file, then defaults. Save the chosen non-secret values and where each came from. Provide a settings preview that makes no network requests. The Cloudflare notes should identify the enabled protections, relevant rules and versions, what those rules do, and any known request-counting periods or lengths of time that restrictions remain in place. State what is unknown. The app records the user's description without changing Cloudflare settings or assuming it has verified them.
+Run the commands below from the repository root. Keep the local settings file at `../.env` and save each trial under `../runs/<trial-id>/`, both in the enclosing outer/stuff directory. Load `../.env` explicitly. Interpret relative file and directory settings from the repository root.
+
+Choose settings in this order: explicit command-line options, then environment variables available to the program, then `../.env`, then defaults. Save the chosen non-secret values and where each came from. Provide a settings preview that makes no network requests. The Cloudflare notes should identify the enabled protections, relevant rules and versions, what those rules do, and any known request-counting periods or lengths of time that restrictions remain in place. State what is unknown. The app records the user's description without changing Cloudflare settings or assuming it has verified them.
 
 | Setting | Proposed initial value or requirement |
 | --- | --- |
@@ -196,7 +198,7 @@ Choose settings in this order: explicit command-line options, then environment v
 | `CF_SETTINGS_LABEL`, `CF_SETTINGS_NOTES` | Required user-recorded label and description of current Cloudflare settings; allow `unknown` with an explanation of the report limitation. Include when settings took effect, reuse the label while unchanged, and use a new label after a change. |
 | `NETWORK_LABEL`, `PUBLIC_IP` | Description of the internet connection, including any VPN/proxy/Tor setup, and the public IP address recorded by the person running the trial. State if the address has not been verified. Keep actual IP details in local results and reviewed Central IT material. |
 | `PROXY_SERVER` | Optional proxy connection kept unchanged throughout the trial; login details come from separate environment variables and are never logged. |
-| `OUTPUT_DIR` | Relative directory `runs/`; a separate subdirectory for each trial. |
+| `OUTPUT_DIR` | Default `../runs/` in the outer/stuff directory; a separate subdirectory for each trial. Keep any custom results location outside the repository too. |
 
 Before contacting BDR, reject invalid identifiers, unknown workflows, invalid starting-thumbnail settings, timings outside the stated bounds, zero or negative limits, item limits above 20, invalid proxy settings, and an unwritable results directory. In `return`, mark opening-interval settings as unused. Reject explicit command-line opening-timing options for that workflow, and show any unused opening-timing environment values in the settings preview.
 
@@ -209,14 +211,13 @@ uv run ./main.py "$COLLECTION_ID" --workflow tabs --open-interval-seconds 1 --op
 uv run ./main.py "$COLLECTION_ID" --workflow return --view-seconds 5 --view-jitter-seconds 0.5 --selection-start 1 --seed 42 --max-items 20
 ```
 
-When writing the app, keep `.env`, `runs/`, and saved browser diagnostics out of Git; the current `.gitignore` does not cover them yet. Commit only a placeholder `.env.example`. Never record authorization headers, cookies, proxy passwords, raw saved browser sessions, or a complete copy of environment variables. Store only needed public URL information and remove sensitive query values. Screenshots, saved HTML, network-recording files such as HAR, and Playwright traces should be optional local diagnostics reviewed before sharing; omit them from the first version.
-- BIRKIN-FEEDBACK: 
-    - `gitignore` does not need to include `.env`, because the `.env` will be at the outer/stuff level, not within the repo.
-    - save runs to the outer/stuff directory too (ie, to `../runs/whatever`)
-    - define "HAR"
+The local `../.env` file and `../runs/` directory are outside this Git repository, so they do not need entries in its `.gitignore`. Keep only a placeholder `.env.example` in the repository. Keep any future saved browser diagnostics outside the repository as well, alongside the relevant trial's results.
 
+Never record authorization headers, cookies, proxy passwords, raw saved browser sessions, or a complete copy of environment variables. Store only needed public URL information and remove sensitive query values.
 
-Each run should write:
+**HAR** means **HTTP Archive**: a file that records the browser's network requests and the responses it receives. It can contain URLs, timing information, headers, cookies, and response content. [Playwright's explanation of HAR files](https://playwright.dev/python/docs/mock#mocking-with-har-files). Screenshots, saved HTML, HAR files, and Playwright traces are possible later additions for investigating problems. They can contain sensitive information and need review before sharing; omit them from the first version.
+
+Each run should write these files in `../runs/<trial-id>/` by default:
 
 - `run.json`: trial ID, local Eastern dates/times and timezone, workflow, chosen settings, code version and whether there are uncommitted changes, Python/Playwright/browser versions, connection information, browser settings and tab-opening method, selected URLs and positions, random seed, planned opening/viewing times, item-page scroll distance and pause length, facts about gathering links, list of tabs, known unknowns, and why the trial stopped. Label Cloudflare settings as user-supplied.
 - `events.jsonl`: save openings, page changes, requests, responses/failures, content-ready observations, tab switches, viewing, returns, scrolling, pauses, and interference as they happen. Include elapsed time, local Eastern time with offset, and action/tab/request IDs. Distinguish item-viewing scrolls from scrolling to find thumbnails or a return link. Record requested scroll distances, observed positions before/after, pause start/end, and whether the bottom was reached during viewing. Record requested, final, and supporting-file URLs with sensitive information removed. Keep the sending tab and workflow stage for each request, including requests not yet linked to a tab and unfinished attempts. Write to disk regularly so an interruption preserves useful evidence.
@@ -268,7 +269,7 @@ Work in that order, combining adjacent issues if useful. Include reporting and l
 
 Initial tests should check:
 
-- Which setting source takes priority, workflow-specific settings, invalid timings/limits, and local Eastern dates/times across daylight saving changes. Request-count periods must use elapsed time independently of changes to the computer's date and time.
+- Which setting source takes priority, explicit loading of `../.env`, trial files saved under `../runs/<trial-id>/` by default, workflow-specific settings, invalid timings/limits, and local Eastern dates/times across daylight saving changes. Request-count periods must use elapsed time independently of changes to the computer's date and time.
 - Identical ordered every-other-item selection in both workflows, both starting positions, duplicate links, fewer than 20 available items, limits on scrolling and gathering links, and missing or changed selected links after a return.
 - Repeatable opening/viewing times; opening later tabs while earlier ones load; recording delays without speeding up to catch up; at most 20 item tabs plus the overview; finishing reviews after reaching the item limit; and correct one-tab open/view/actual-link-return order.
 - Item viewing that starts at the top, pauses before and after section-by-section scrolling, and keeps scrolling and pauses within the chosen total viewing duration in both workflows. Cover short pages, long pages, content revealed by scrolling, durations shorter than one pause, reaching the bottom early, and reaching the end of viewing time before the bottom. Confirm item scrolling begins only after all selected tabs are opened in `tabs`, and scrolling to find the return link belongs to the later return step in `return`.
