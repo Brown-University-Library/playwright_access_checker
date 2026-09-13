@@ -19,7 +19,7 @@ Contents:
 
 Build a repeatable way to describe when a researcher-like browsing session encounters access interference for an existing Cloudflare configuration. Purpose: to gather objective data for when we work with Central IT to make Cloudflare configuration changes. Objective: for a given Cloudflare configuration, for us to be able to supply the date, urls-checked, and multiple access-frequency data-points -- to assess the real-world implications of a given configuration.
 
-Use a Python command-line app with Playwright and one visible Chromium browser. Start each trial with a new browser session that does not reuse cookies or cached files from earlier trials. All tabs in a trial share that session; Playwright calls it a `BrowserContext`. Each run accepts one collection identifier, one workflow, and that workflow's timing settings. Both initial workflows select every other item thumbnail, up to 20 items, and follow these distinct sequences:
+Use a Python command-line app with Playwright and one visible Chromium browser. **In the first version, each invocation of the app runs one trial:** one collection identifier, one workflow, and one set of timing targets. Start each trial with a new browser session that does not reuse cookies or cached files from earlier trials. All tabs in a trial share that session; Playwright calls it a `BrowserContext`. Both workflows are available in the first version, and each trial uses the selected workflow. Both select every other item thumbnail, up to 20 items, and follow these distinct sequences:
 
 1. **Workflow 1 (`tabs`): Open all selected items in separate tabs first; then inspect them.** Stay on the collection overview while opening the selected thumbnail links rapidly, about one second apart, each in its own new tab. Only after the selected item tabs have been opened, switch to the first item tab and spend about five seconds scrolling down its page in sections, pausing as though skimming each newly revealed area. Then inspect each remaining item tab in opening order in the same way.
 2. **Workflow 2 (`return`): Inspect each item before opening the next, using one tab throughout.** From the collection overview, open one selected thumbnail in the current tab and spend about five seconds scrolling and skimming in the same way. Follow its back-to-collection link in the same tab. Scroll the overview if needed, then open the next selected thumbnail and repeat the open/inspect/return sequence.
@@ -71,13 +71,15 @@ A page is ready when its expected collection or item content is available for re
 
 ### Comparing runs
 
+Start the app separately for each trial in the first version. Keep common settings in `../.env` and change only the values being compared, using that file or command-line options. Repeating the same command with the same settings runs another trial at the same timing targets. Gathering multiple frequency data points therefore requires multiple invocations.
+
 Run both workflows under recorded Cloudflare settings in separate trials. For `tabs`, vary the time between openings while initially keeping viewing time unchanged; for `return`, vary viewing time and measure the resulting time between openings. The 30-, 60-, 120-, and 300-second reporting periods describe requests within a trial; they do not replace trials at different browsing paces. Where possible, keep the collection, displayed order, starting thumbnail, item limit, browser version, browser display size, item-page scroll distance and pause length, cache settings, random seed, link-gathering limits, and type of internet connection the same. Record differences in selected URLs, gathering links, returns, or scrolling, including how far each item page was viewed. Longer viewing times can allow more scrolling and trigger additional requests; include that difference when interpreting comparisons. Group results by workflow and timing settings: the same viewing duration does not make the two workflows generate the same activity. Repeat a useful set of conditions, ideally three times initially, and report the individual results and their range. This is a practical comparison, not a statistical guarantee.
 
 Keep trials with no interference alongside challenged or denied trials, showing their duration and activity. Keep incomplete or inconclusive trials with an explanation of their limitations. Together these provide evidence about the current Cloudflare settings for discussion with Central IT. After Central IT changes settings, use a new label and record when the change took effect. Compare the same paces and other recorded conditions, allowing time for a previous block to expire or using another recorded public IP address. A changed address is itself a changed condition; do not combine unlike internet connections into a single claimed request limit. A short manually operated browser session can later help assess how closely the app's actions resemble researcher behavior.
 
 ## Application design
 
-One command opens the collection, selects thumbnail links in the browser, carries out either requested workflow, and writes the report. Both workflows belong in the application. Use a few small Python files for settings, browser actions, timing, and results. Collection browsing and item access share one browser session and internet connection, keeping the app small and easy to watch.
+One command runs one trial: it opens the collection, selects thumbnail links in the browser, carries out the selected workflow, saves that trial's results, closes the browser session, and exits. Another trial starts with another invocation of the app. Use a few small Python files for settings, browser actions, timing, and results. Collection browsing and item access share one browser session and internet connection, keeping the app small and easy to watch.
 
 Gathering collection links makes requests during each run, and changes to the listing can change what the browser does. The rules used to find thumbnail and return links may need updating when Studio changes. Save the selected list in each run's results for comparison. The app performs one sequence of browsing actions while the browser can load several tabs at once.
 
@@ -179,6 +181,8 @@ Run the commands below from the repository root. Keep the local settings file at
 
 Choose settings in this order: explicit command-line options, then environment variables available to the program, then `../.env`, then defaults. Save the chosen non-secret values and where each came from. Provide a settings preview that makes no network requests. The Cloudflare notes should identify the enabled protections, relevant rules and versions, what those rules do, and any known request-counting periods or lengths of time that restrictions remain in place. State what is unknown. The app records the user's description without changing Cloudflare settings or assuming it has verified them.
 
+The proposed `OPEN_INTERVAL_SECONDS` and `VIEW_SECONDS` values below are defaults for a single trial. Their targets stay unchanged during that trial, with the configured random variation around them. The first version does not automatically choose additional timing targets or launch more trials.
+
 | Setting | Proposed initial value or requirement |
 | --- | --- |
 | Collection identifier | Required argument; confirm accepted forms before writing the app. |
@@ -266,6 +270,8 @@ These are possible implementation issues to create after reviewing the plan. Onl
 | **Document one separate VPN/proxy setup** | Explain how to choose and verify a public IP address, keep the connection unchanged throughout a trial, record the connection, and check that the address receives the intended Cloudflare protection. | Tor experiments or packaging the programs in containers. |
 
 Work in that order, combining adjacent issues if useful. Include reporting and limits in the first working version: without them, a blocked browser cannot answer the original question reliably.
+
+A possible second phase would automate a series of separate trials at different settings. This could be added to the app, or a separate program could start this command-line app once per trial and collect the results. Decide between those approaches later. Each trial would still retain its own timing targets, browser session, identifier, and results, with any needed internet-connection changes handled between trials.
 
 Initial tests should check:
 
