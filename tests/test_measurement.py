@@ -121,3 +121,26 @@ class TestMeasurement(unittest.TestCase):
         self.assertEqual(result['totals']['all_bdr_requests'], 1)
         self.assertEqual(result['breakdowns']['tab_id'], {'tab-2': 1})
         self.assertIsNone(result['opening_statistics'])
+
+    def test_verification_keeps_real_counts_and_separates_later_browsing(self) -> None:
+        """
+        Checks verification traffic stays on the real timeline and later browsing is reported separately.
+        """
+        events = [
+            {'kind': 'request', 'elapsed': 0, 'request_id': 'r1', 'included_host': True, 'resource_type': 'document'},
+            {'kind': 'verification_start', 'elapsed': 0.1, 'local_time': 'verification start'},
+            {'kind': 'request', 'elapsed': 1, 'request_id': 'r2', 'included_host': True, 'resource_type': 'fetch'},
+            {'kind': 'verification_end', 'elapsed': 5.1, 'local_time': 'verification end', 'completed': True},
+            {'kind': 'item_open', 'elapsed': 5.2, 'attempt_id': 'item-1'},
+            {'kind': 'request', 'elapsed': 5.3, 'request_id': 'r3', 'included_host': True, 'resource_type': 'document'},
+            {'kind': 'item_ready', 'elapsed': 5.4, 'attempt_id': 'item-1'},
+            {'kind': 'stop', 'elapsed': 6, 'reason': 'workflow_complete'},
+        ]
+        result = analyze(events, 6)
+        verification = result['initial_verification']
+        self.assertEqual(result['totals']['all_bdr_requests'], 3)
+        self.assertEqual(verification['duration_seconds'], 5)
+        self.assertEqual(verification['requests_during_wait']['all_bdr_requests'], 1)
+        self.assertEqual(verification['after_verification']['all_bdr_requests'], 1)
+        self.assertEqual(verification['after_verification']['item_successes'], 1)
+        self.assertAlmostEqual(verification['after_verification']['observed_seconds'], 0.9)

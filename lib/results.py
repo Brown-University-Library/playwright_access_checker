@@ -164,11 +164,36 @@ def write_summary(directory: Path, data: dict, events: list[dict]) -> None:
     stop = data.get('stop', {})
     totals = analysis['totals'] or {}
     reason = data.get('stop_reason') or 'incomplete'
+    verification = analysis['initial_verification']
+    verification_text = 'not performed'
+    verification_lines: list[str] = []
+    if verification:
+        verification_text = f'{verification["outcome"].replace("_", " ")} ({verification["duration_seconds"]:.3f}s)'
+        evidence = verification['evidence']
+        verification_lines = [
+            (
+                f'- Verification started: {cell(verification["started_at"])}. HTTP {cell(evidence.get("status"))}; '
+                f'Ray ID: {cell(evidence.get("headers", {}).get("cf-ray"))}.'
+            ),
+            (
+                '- Verification waiting time is excluded from navigation and trial time limits. '
+                'Request timestamps and the total observed duration include it.'
+            ),
+        ]
+        after = verification['after_verification']
+        if after:
+            verification_lines.append(
+                f'- Browsing after verification: {after["observed_seconds"]:.3f} seconds; '
+                f'{after["item_attempts"]} item attempts; {after["page_requests"]} BDR page requests; '
+                f'{after["all_bdr_requests"]} total BDR requests.'
+            )
     outcome = (
         'No interference observed within these limits.'
         if reason == 'workflow_complete'
         else f'Trial stopped: {reason.replace("_", " ")}.'
     )
+    if reason == 'workflow_complete' and verification:
+        outcome = 'Browsing completed after initial Turnstile verification.'
     if reason not in {
         'workflow_complete',
         'challenge',
@@ -203,6 +228,8 @@ def write_summary(directory: Path, data: dict, events: list[dict]) -> None:
         '',
         f'- Started: {cell(data.get("measurement_started_at", data["created_at"]))}.',
         f'- Observed duration: {cell(data.get("observed_seconds"))} seconds. Workflow: {settings["workflow"]}.',
+        f'- Initial Turnstile verification: {verification_text}.',
+        *verification_lines,
         f'- Cloudflare settings (user supplied): {cell(settings["cf_settings_label"])}. {cell(settings["cf_settings_notes"])}',
         f'- Settings took effect: {cell(settings["cf_settings_since"])}.',
         f'- Connection: {cell(settings["network_label"])}; public IP: {cell(settings["public_ip"])}. {cell(settings["ip_notes"])}',
@@ -217,7 +244,10 @@ def write_summary(directory: Path, data: dict, events: list[dict]) -> None:
         '',
         '## Request counts',
         '',
-        'Each row counts starts across all tabs. Successes were observed ready by the row’s end.',
+        (
+            'Each row counts starts across all tabs from the first collection request, '
+            'including initial verification when present. Successes were observed ready by the row’s end.'
+        ),
         '',
         '| Preceding seconds | Observed seconds | Coverage | Attempts | Ready | Completed views | Page requests | All BDR | Other hosts |',
         '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
@@ -369,6 +399,7 @@ def write_summary(directory: Path, data: dict, events: list[dict]) -> None:
         f'{settings["view_seconds"]} ± {settings["view_jitter_seconds"]}s',
         timing_text(analysis['opening_statistics']),
         data.get('observed_seconds'),
+        verification_text,
         f'{totals.get("item_attempts", 0)}/{totals.get("item_successes", 0)}/{totals.get("completed_views", 0)}',
         reason,
     ]
@@ -377,8 +408,8 @@ def write_summary(directory: Path, data: dict, events: list[dict]) -> None:
             '',
             '## Comparison row',
             '',
-            '| Trial | Eastern start | Settings | Workflow | Start/limit | Opening target | Viewing target | Actual opening avg (range) | Duration | Attempts/ready/views | Stop | Report |',
-            '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+            '| Trial | Eastern start | Settings | Workflow | Start/limit | Opening target | Viewing target | Actual opening avg (range) | Duration | Initial verification | Attempts/ready/views | Stop | Report |',
+            '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
             '| ' + ' | '.join(cell(value) for value in comparison) + f' | [report]({data["trial_id"]}/summary.md) |',
             '',
             'The report link is relative to a comparison table in the parent runs directory.',

@@ -138,6 +138,39 @@ def counts(events: list[dict], lower: float, end: float, include_lower: bool) ->
     return result
 
 
+def analyze_verification(events: list[dict], end: float | None) -> dict | None:
+    """
+    Separates initial verification and subsequent browsing using the recorded timeline.
+    Called by: analyze()
+    """
+    result = None
+    starts = [event for event in events if event['kind'] == 'verification_start' and not event.get('after_stop')]
+    if starts:
+        start = starts[0]
+        ends = [event for event in events if event['kind'] == 'verification_end']
+        finish = ends[0] if ends else {}
+        boundary = end if end is not None else events[-1]['elapsed']
+        wait_end = min(finish.get('elapsed', boundary), boundary)
+        completed = bool(finish.get('completed') and not finish.get('after_stop') and finish['elapsed'] <= boundary)
+        stops = [event for event in events if event['kind'] == 'stop']
+        result = {
+            'started_at': start['local_time'],
+            'duration_seconds': max(0, wait_end - start['elapsed']),
+            'completed': completed,
+            'outcome': 'completed' if completed else stops[0]['reason'] if stops else 'not_completed',
+            'evidence': start,
+            'requests_during_wait': counts(events, start['elapsed'], wait_end, True),
+            'after_verification': None,
+        }
+        if completed:
+            result['after_verification'] = {
+                'started_at': finish['local_time'],
+                'observed_seconds': max(0, boundary - finish['elapsed']),
+                **counts(events, finish['elapsed'], boundary, False),
+            }
+    return result
+
+
 def analyze(events: list[dict], end: float | None) -> dict:
     """
     Reconstructs all reporting periods and timing measurements from the log.
@@ -147,7 +180,13 @@ def analyze(events: list[dict], end: float | None) -> dict:
     for event in events:
         if event['kind'] == 'request' and event['request_id'] in bindings:
             event['tab_id'] = bindings[event['request_id']]
-    result = {'preceding_periods': [], 'totals_at_marks': {}, 'totals': None, 'breakdowns': {}}
+    result = {
+        'preceding_periods': [],
+        'totals_at_marks': {},
+        'totals': None,
+        'breakdowns': {},
+        'initial_verification': analyze_verification(events, end),
+    }
     if end is not None:
         result['totals'] = counts(events, 0, end, True)
         for window in WINDOWS:

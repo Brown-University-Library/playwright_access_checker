@@ -35,6 +35,7 @@ class Settings:
     max_items: int = 20
     max_scroll_actions: int = 20
     navigation_timeout_seconds: float = 30.0
+    verification_timeout_seconds: float = 120.0
     cf_settings_label: str = ''
     cf_settings_notes: str = ''
     cf_settings_since: str = 'unknown'
@@ -141,6 +142,8 @@ def validate(settings: Settings, args: argparse.Namespace, root: Path = ROOT) ->
         value = getattr(settings, name)
         if not math.isfinite(value) or value <= 0:
             raise ValueError(f'{name.upper()} must be finite and greater than zero.')
+    if not math.isfinite(settings.verification_timeout_seconds) or settings.verification_timeout_seconds < 0:
+        raise ValueError('VERIFICATION_TIMEOUT_SECONDS must be finite and nonnegative; use 0 to stop immediately.')
     timing_names = ['view', 'open']
     if settings.workflow == 'return':
         for name in ('open_interval_seconds', 'open_jitter_seconds'):

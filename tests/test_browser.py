@@ -2,15 +2,41 @@
 Checks complete browser trials against a local website; never contacts BDR.
 """
 
+import contextlib
+import io
 import json
 import tempfile
 import unittest
 from unittest.mock import PropertyMock, patch
 
+from playwright.sync_api import Page
+
 from lib.browser_flow import run_trial
 from lib.config import Settings
 from lib.results import rebuild_report
 from tests.local_site import LocalSite
+
+ORIGINAL_BRING_TO_FRONT = Page.bring_to_front
+
+
+def complete_local_verification(page: Page) -> None:
+    """
+    Clicks the small local test website's button after a simulated user delay.
+    Called by: TestBrowser verification tests, through patched Page.bring_to_front()
+    """
+    ORIGINAL_BRING_TO_FRONT(page)
+    button = page.get_by_role('button', name='Complete local verification')
+    if button.count():
+        page.wait_for_timeout(1100)
+        button.click()
+
+
+def close_local_verification(page: Page) -> None:
+    """
+    Closes the local verification page to simulate a user closing the browser.
+    Called by: TestBrowser.test_verification_window_closed(), through patched Page.bring_to_front()
+    """
+    page.close()
 
 
 class TestBrowser(unittest.TestCase):
@@ -60,12 +86,17 @@ class TestBrowser(unittest.TestCase):
             'open_interval_seconds': 0.12,
             'open_jitter_seconds': 0,
             'navigation_timeout_seconds': 2,
+            'verification_timeout_seconds': 3,
             'max_duration_seconds': 12,
         }
         values.update(changes)
         url = self.site.origin + '/studio/collections/bdr:nz9qn2kb/?page=1&per_page=50'
-        with patch.object(Settings, 'collection_url', new_callable=PropertyMock, return_value=url):
+        with (
+            patch.object(Settings, 'collection_url', new_callable=PropertyMock, return_value=url),
+            contextlib.redirect_stdout(io.StringIO()) as output,
+        ):
             recorder = run_trial(Settings(**values), headless=True)
+        self.output = output.getvalue()
         data = json.loads((recorder.directory / 'run.json').read_text())
         return recorder, data
 
@@ -75,6 +106,7 @@ class TestBrowser(unittest.TestCase):
         """
         recorder, data = self.run_case(mode='slow')
         self.assertEqual(data['stop_reason'], 'workflow_complete', data.get('stop'))
+        self.assertEqual(self.output, '')
         opens = [event for event in recorder.events if event['kind'] == 'item_open']
         ready = [event for event in recorder.events if event['kind'] == 'item_ready']
         views = [event for event in recorder.events if event['kind'] == 'view_start']
@@ -187,13 +219,122 @@ class TestBrowser(unittest.TestCase):
 
     def test_verification_page_without_challenge_header(self) -> None:
         """
-        Checks a Turnstile gate at HTTP 200 stops before selecting or opening items.
+        Checks a Turnstile page at HTTP 200 prompts once and stops at the verification limit.
         """
-        recorder, data = self.run_case(mode='turnstile')
-        self.assertEqual(data['stop_reason'], 'verification_required', data.get('stop'))
+        recorder, data = self.run_case(mode='turnstile', verification_timeout_seconds=0.25)
+        self.assertEqual(data['stop_reason'], 'verification_timeout', data.get('stop'))
         self.assertLess(data['observed_seconds'], 1)
+        self.assertEqual(self.output.count('Turnstile detected.'), 1)
+        self.assertIn('Complete verification in the browser window.', self.output)
         self.assertFalse(any(event['kind'] == 'item_open' for event in recorder.events))
         self.assertEqual(data['stop']['source'], 'Turnstile verification page; rule unconfirmed')
+        verification = data['analysis']['initial_verification']
+        self.assertFalse(verification['completed'])
+        self.assertGreaterEqual(verification['duration_seconds'], 0.25)
+        self.assertEqual(data['analysis'], rebuild_report(recorder.directory)['analysis'])
+
+    def test_manual_verification_resumes_in_same_session(self) -> None:
+        """
+        Checks both workflows resume after a local button sets a cookie and loads the collection.
+        """
+        for workflow in ('tabs', 'return'):
+            with self.subTest(workflow=workflow), patch.object(Page, 'bring_to_front', complete_local_verification):
+                recorder, data = self.run_case(
+                    workflow,
+                    'turnstile_manual',
+                    max_items=1,
+                    navigation_timeout_seconds=0.3,
+                    max_duration_seconds=5,
+                )
+            self.assertEqual(data['stop_reason'], 'workflow_complete', data.get('stop'))
+            self.assertEqual(self.output.count('Turnstile detected.'), 1)
+            self.assertIn('Continuing the browsing trial.', self.output)
+            verification = data['analysis']['initial_verification']
+            self.assertTrue(verification['completed'])
+            self.assertGreater(verification['duration_seconds'], 1)
+            self.assertGreater(data['observed_seconds'], verification['duration_seconds'])
+            self.assertEqual(verification['after_verification']['item_attempts'], 1)
+            start = next(event for event in recorder.events if event['kind'] == 'verification_start')
+            end = next(event for event in recorder.events if event['kind'] == 'verification_end')
+            actions = {'item_open', 'scroll_start', 'selection'}
+            self.assertFalse(
+                any(
+                    event['kind'] in actions and start['event_id'] < event['event_id'] < end['event_id']
+                    for event in recorder.events
+                )
+            )
+            self.assertEqual(data['analysis']['totals']['completed_views'], 1)
+            self.assertEqual(data['analysis'], rebuild_report(recorder.directory)['analysis'])
+            summary = (recorder.directory / 'summary.md').read_text()
+            self.assertIn('Browsing completed after initial Turnstile verification.', summary)
+            self.assertIn('Browsing after verification:', summary)
+            self.assertNotIn('No interference observed', summary)
+            self.assertNotIn('local_verification=complete', (recorder.directory / 'events.jsonl').read_text())
+
+    def test_verification_can_be_disabled(self) -> None:
+        """
+        Checks a zero verification limit preserves immediate stopping without a prompt.
+        """
+        _, data = self.run_case(mode='turnstile', verification_timeout_seconds=0)
+        self.assertEqual(data['stop_reason'], 'verification_required')
+        self.assertEqual(self.output, '')
+        self.assertIsNone(data['analysis']['initial_verification'])
+
+    def test_verification_interrupt_saves_results(self) -> None:
+        """
+        Checks Ctrl-C during verification saves the wait and its incomplete outcome.
+        """
+        with patch.object(Page, 'bring_to_front', side_effect=KeyboardInterrupt):
+            recorder, data = self.run_case(mode='turnstile')
+        self.assertEqual(data['stop_reason'], 'user_interrupted')
+        self.assertFalse(data['analysis']['initial_verification']['completed'])
+        self.assertEqual(data['analysis'], rebuild_report(recorder.directory)['analysis'])
+
+    def test_verification_window_closed(self) -> None:
+        """
+        Checks closing the verification window saves a closed-tab outcome.
+        """
+        with patch.object(Page, 'bring_to_front', close_local_verification):
+            _, data = self.run_case(mode='turnstile')
+        self.assertEqual(data['stop_reason'], 'tab_closed', data.get('stop'))
+        self.assertFalse(data['analysis']['initial_verification']['completed'])
+
+    def test_verification_does_not_accept_another_collection(self) -> None:
+        """
+        Checks unrelated collection content does not resume the requested trial.
+        """
+        with patch.object(Page, 'bring_to_front', complete_local_verification):
+            _, data = self.run_case(mode='turnstile_wrong_collection', verification_timeout_seconds=1.5)
+        self.assertEqual(data['stop_reason'], 'verification_timeout', data.get('stop'))
+        self.assertEqual(data['analysis']['totals']['item_attempts'], 0)
+
+    def test_other_interference_still_stops(self) -> None:
+        """
+        Checks denials, supporting challenges, and later Turnstile pages still stop actions.
+        """
+        for mode, workflow, reason in (
+            ('initial_denial', 'tabs', 'verification_required'),
+            ('initial_challenge', 'tabs', 'challenge'),
+            ('verification_supporting_challenge', 'tabs', 'challenge'),
+            ('item_turnstile', 'tabs', 'verification_required'),
+            ('return_turnstile', 'return', 'verification_required'),
+        ):
+            with self.subTest(mode=mode):
+                recorder, data = self.run_case(workflow, mode, max_items=1)
+                self.assertEqual(data['stop_reason'], reason, data.get('stop'))
+                if mode == 'verification_supporting_challenge':
+                    self.assertFalse(data['analysis']['initial_verification']['completed'])
+                    self.assertEqual(data['analysis']['totals']['item_attempts'], 0)
+                else:
+                    self.assertEqual(self.output, '')
+                stop = data['stop']
+                self.assertFalse(
+                    any(
+                        event['kind'] in {'item_open', 'return_open', 'scroll_start'}
+                        and event['event_id'] > stop['event_id']
+                        for event in recorder.events
+                    )
+                )
 
     def test_widget_on_accessible_content_is_not_a_denial(self) -> None:
         """
@@ -201,6 +342,7 @@ class TestBrowser(unittest.TestCase):
         """
         _, data = self.run_case(mode='turnstile_with_content', max_items=1)
         self.assertEqual(data['stop_reason'], 'workflow_complete', data.get('stop'))
+        self.assertEqual(self.output, '')
 
     def test_unavailable_restoration_control_stops(self) -> None:
         """

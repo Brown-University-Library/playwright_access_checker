@@ -8,7 +8,7 @@ Runs repeatable, visible browser trials against Brown Digital Repository Studio.
 
 Each invocation runs one trial in a new Chromium session. Both workflows request collection page 1 with 50 items per page and select every other distinct thumbnail, up to 20 items. `tabs` opens the selected links in separate tabs before viewing them in order. `return` opens, views, and follows the item's actual return link before opening the next item. Viewing includes section-by-section scrolling and pauses. The browser keeps normal images, JavaScript, cookies, and caching enabled.
 
-The app records requests from all tabs before the first collection request and stops further actions on a challenge, denial, relevant error, time limit, or interruption. It also recognizes a Turnstile verification page when expected Studio content is absent, even if the HTTP status is 200; the presence of a widget beside accessible content alone is not a denial. A request count describes what the browser observed; it does not establish a Cloudflare request limit. Settings and public IP details are supplied by the person running the trial. Connection changes and Cloudflare configuration remain outside the app.
+The app records requests from all tabs before the first collection request. If Turnstile prevents the initial collection from appearing, the app prompts you to complete verification in the browser and resumes automatically when the collection becomes available. A widget beside accessible content does not trigger this pause. Challenges after initial access, denials, relevant errors, time limits, and interruptions stop further actions. A request count describes what the browser observed; it does not establish a Cloudflare request limit. Settings and public IP details are supplied by the person running the trial. Connection changes and Cloudflare configuration remain outside the app.
 
 The implementation follows [the application plan](PLAN__02_application_design.md) and is tracked in [issue #9](https://github.com/birkin/playwright_access_checker/issues/9). The repository began with the [script_project template](https://github.com/birkin/birkin_coding_tools/tree/main/script_project/).
 
@@ -55,6 +55,10 @@ uv run ./main.py bdr:nz9qn2kb --workflow tabs --seed 42
 uv run ./main.py bdr:nz9qn2kb --workflow return --seed 42
 ```
 
+When the terminal prints `Turnstile detected`, complete any requested verification in the browser window. The app keeps the same browser session and waits up to 120 seconds for the requested collection to appear. It resumes automatically without an Enter key press. If verification does not complete, the app stops with `verification_timeout` and saves the results. Ctrl-C or closing the browser also stops the trial and saves the evidence. The app prompts only when verification is detected on the initial collection page; a later Turnstile page stops the trial.
+
+Change the waiting limit with `--verification-timeout-seconds 180`, or use `--verification-timeout-seconds 0` to stop immediately when Turnstile appears. The app leaves verification to you and does not guarantee that Turnstile will accept the browser. An explicit Cloudflare challenge response or denial still stops the trial immediately.
+
 For a short initial check, limit the number of item openings:
 
 ```bash
@@ -72,26 +76,29 @@ Settings take priority in this order: command-line options, environment variable
 | `SELECTION_START` | `1`: select positions 1, 3, 5; use `2` for positions 2, 4, 6. |
 | `SEED` | Generated when omitted; recorded so planned timings can be repeated. (A seed sets the starting point for a random-number generator, so using the same seed with the same generator produces the same sequence of numbers.) |
 | `MAX_ITEMS` | `20`; accepts 1–20. Remaining viewing and return steps finish after opening this many items. |
-| `MAX_DURATION_SECONDS` | `300`; measured from the first collection request, including link gathering. |
+| `MAX_DURATION_SECONDS` | `300`; measured from the first collection request, including link gathering, with the initial verification wait excluded. |
 | `MAX_SCROLL_ACTIONS` | `20`; separately limits gathering links, finding a thumbnail, and finding a return link. Viewing scrolls are limited by viewing time. |
-| `NAVIGATION_TIMEOUT_SECONDS` | `30`; bounds page openings and waits for required content. |
+| `NAVIGATION_TIMEOUT_SECONDS` | `30`; bounds page openings and waits for required content, with the initial verification wait excluded. |
+| `VERIFICATION_TIMEOUT_SECONDS` / `--verification-timeout-seconds` | `120`; maximum wait for manual Turnstile verification on the initial collection. Set `0` to stop immediately. |
 | `BDR_HOSTS` | `repository.library.brown.edu`; exact comma-separated hostnames included in counts and stopping rules. Review this list before a trial if Studio uses other BDR hosts. |
 | `PROXY_SERVER` | Optional `http`, `https`, or `socks5` server with a port, prepared before the trial. Credentials use separate `PROXY_USERNAME` and `PROXY_PASSWORD` environment values. Authenticated SOCKS5 is unsupported by Chromium. |
 | `OUTPUT_DIR` | `../runs`; must remain outside this Git repository. |
 
 All timing values must be finite. Targets must be positive, and variation must be nonnegative and smaller than the target. Explicit opening-timing options are rejected for `return`; opening-timing values from the environment or `.env` are shown as unused. Use a new invocation for another workflow, timing target, or connection.
 
-Studio's current adapter uses `.item-thumbnail` links, the page-size and sort dropdowns, and “Back to Results” when available. The first listing must actually show page 1 and 50 per page. A return that loses the 50-item setting gets one restoration attempt through the actual dropdown. Changed sorting, filters, or item order stop the trial. Scrolling uses `window.scrollBy` to target the outer page, keeping embedded viewer controls untouched. Additional listing pages, collection nesting, downloads, viewer controls, challenge solving, and automatic retries are excluded.
+Studio's current adapter uses `.item-thumbnail` links, the page-size and sort dropdowns, and “Back to Results” when available. The first listing must actually show page 1 and 50 per page. A return that loses the 50-item setting gets one restoration attempt through the actual dropdown. Changed sorting, filters, or item order stop the trial. Scrolling uses `window.scrollBy` to target the outer page, keeping embedded viewer controls untouched. Additional listing pages, collection nesting, downloads, viewer controls, automated challenge solving, and automatic retries are excluded.
 
 ## Results and interpretation
 
 Each trial creates `../runs/<trial-id>/` containing:
 
 - `run.json`: settings and their sources, versions, selected URLs, browser details, planned timings, request counts, and the reason the trial stopped.
-- `events.jsonl`: immediately flushed actions, requests, responses, failures, content readiness, tab switches, scrolling, viewing, and stopping evidence.
+- `events.jsonl`: immediately flushed actions, requests, responses, failures, content readiness, verification starts and outcomes, tab switches, scrolling, viewing, and stopping evidence.
 - `summary.md`: conditions, checked URLs, actual timings, completed and interrupted views, preceding 30/60/120/300-second counts, totals at those marks when reached, a comparison row, and known evidence limits.
 
 Durations use a monotonic clock. Dates use `America/New_York` with the numeric offset and EST/EDT label. Shorter observations are labeled partial; time marks not reached are unavailable. Switching tabs and scrolling are separate from item-opening attempts. Finishing a viewing duration does not mean the browser reached the bottom or finished loading every viewer file.
+
+Reports show the initial verification outcome and waiting duration separately, along with the duration and request counts after successful verification. The total observed duration and request-count tables retain the real timeline from the first collection request, including verification traffic and waiting time. The navigation and trial time limits exclude that wait, so total observed duration can exceed `MAX_DURATION_SECONDS`. `run.json` includes these details under `analysis.initial_verification`; the comparison row also identifies runs that required initial verification. Compare runs with the same verification conditions.
 
 The browser closes after results are saved. Press Ctrl-C to stop and retain evidence. Exit status is `0` for a completed workflow, `1` for interference or an incomplete trial, `130` for interruption, and `2` for invalid arguments. Missing Chromium binaries produce a saved startup-error report; install the browser with the command above.
 
@@ -117,7 +124,7 @@ Run a single test with verbose output:
 uv run ./run_tests.py tests.test_measurement --verbose
 ```
 
-The suite uses `unittest` and a loopback-only local website with real headless Chromium. It requires installed Chromium and permission to start a local HTTP server. It tests both workflows, overlapping loads, page-size restoration, scrolling, redirects, interruption, request counts, and interference in background tabs and supporting requests. Automated tests do not contact BDR. See [run_tests.py](run_tests.py) for module and class selection and [AGENTS.md](AGENTS.md) for coding instructions.
+The suite uses `unittest` and a loopback-only local website with real headless Chromium. It requires installed Chromium and permission to start a local HTTP server. It tests both workflows, overlapping loads, page-size restoration, scrolling, redirects, interruption, request counts, and interference in background tabs and supporting requests. A local verification button tests conditional prompting, continued use of the same session, automatic resumption, timeout, and cancellation without loading real Turnstile. Automated tests do not contact BDR. See [run_tests.py](run_tests.py) for module and class selection and [AGENTS.md](AGENTS.md) for coding instructions.
 
 ## Primary dependencies
 

@@ -77,3 +77,21 @@ class TestResults(unittest.TestCase):
         self.assertEqual(data['stop_reason'], 'challenge')
         self.assertEqual(data['observed_seconds'], 2)
         self.assertTrue(recorder.events[-1]['after_stop'])
+
+    def test_rebuild_recovers_unfinished_verification(self) -> None:
+        """
+        Checks verification survives an interrupted log without its ending event.
+        """
+        recorder = self.recorder
+        recorder.emit('verification_start', elapsed=1, tab_id='tab-1', status=200)
+        recorder.save()
+        recorder.emit('page_observed', elapsed=4, tab_id='tab-1')
+        recorder.stream.write('{"kind":')
+        recorder.stream.flush()
+        data = rebuild_report(recorder.directory)
+        verification = data['analysis']['initial_verification']
+        self.assertEqual(data['stop_reason'], 'incomplete_saved_events')
+        self.assertEqual(verification['duration_seconds'], 3)
+        self.assertFalse(verification['completed'])
+        self.assertIsNone(verification['after_verification'])
+        self.assertIn('not completed (3.000s)', (recorder.directory / 'summary.md').read_text())

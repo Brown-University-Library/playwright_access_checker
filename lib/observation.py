@@ -66,6 +66,10 @@ class Observer:
         self.responses: dict[str, dict] = {}
         self.page_observations: dict[Page, dict] = {}
         self.attempts: list[Attempt] = []
+        self.verification_page: Page | None = None
+        self.verification_started: float | None = None
+        self.verification_ended: float | None = None
+        self.verification_evidence: dict = {}
         context.on('page', self.on_page)
         context.on('request', self.on_request)
         context.on('response', self.on_response)
@@ -84,6 +88,7 @@ class Observer:
             self.recorder.emit('tab_created', tab_id=tab_id, url=safe_url(page.url))
             page.on('framenavigated', self.on_navigation)
             page.on('crash', self.on_crash)
+            page.on('close', self.on_close)
             if len(self.pages) > self.settings.max_items + 1 or (self.settings.workflow == 'return' and len(self.pages) > 1):
                 self.recorder.stop('unexpected_extra_tab', tab_id=tab_id)
 
@@ -93,6 +98,13 @@ class Observer:
         Called by: Playwright Page crash notification
         """
         self.recorder.stop('page_crashed', tab_id=self.pages.get(page))
+
+    def on_close(self, page: Page) -> None:
+        """
+        Saves a closed-tab outcome even when a browser wait raises immediately.
+        Called by: Playwright Page close notification
+        """
+        self.recorder.stop('tab_closed', tab_id=self.pages.get(page))
 
     def on_navigation(self, frame: Frame) -> None:
         """
@@ -241,6 +253,65 @@ class Observer:
                         self.recorder.emit('attempt_tab', attempt_id=attempt.attempt_id, tab_id=record['tab_id'])
                         break
 
+    def verification_seconds(self) -> float:
+        """
+        Measures the initial verification wait without changing request timestamps.
+        Called by: active_seconds(), finish_verification(), guard()
+        """
+        seconds = 0.0
+        if self.verification_started is not None:
+            end = self.verification_ended or self.recorder.stopped or time.monotonic()
+            seconds = max(0, end - self.verification_started)
+        return seconds
+
+    def active_seconds(self) -> float:
+        """
+        Excludes the verification wait from navigation and trial time limits.
+        Called by: guard(), timeout_ms(), browser_flow.wait_ready()
+        """
+        seconds = 0.0
+        if self.recorder.started is not None:
+            seconds = time.monotonic() - self.recorder.started - self.verification_seconds()
+        return seconds
+
+    def start_verification(self, page: Page, evidence: dict) -> None:
+        """
+        Prompts once while keeping the initial collection's browser session open.
+        Called by: poll()
+        """
+        self.verification_page = page
+        self.verification_started = time.monotonic()
+        self.verification_evidence = evidence
+        self.recorder.stage = 'initial_verification'
+        self.recorder.emit('verification_start', timeout_seconds=self.settings.verification_timeout_seconds, **evidence)
+        self.recorder.save()
+        print(
+            'Turnstile detected. Complete verification in the browser window. '
+            'The trial will continue automatically when the collection appears; no Enter key is needed. '
+            f'Waiting up to {self.settings.verification_timeout_seconds:g} seconds. Press Ctrl-C to stop and save results.',
+            flush=True,
+        )
+        page.bring_to_front()
+
+    def finish_verification(self, completed: bool) -> None:
+        """
+        Records successful or interrupted verification before continuing or closing.
+        Called by: poll(), browser_flow.run_trial()
+        """
+        if self.verification_page is not None:
+            self.verification_ended = self.recorder.stopped or time.monotonic()
+            self.recorder.emit(
+                'verification_end',
+                tab_id=self.pages[self.verification_page],
+                completed=completed,
+                actual_seconds=self.verification_seconds(),
+            )
+            self.verification_page = None
+            if completed:
+                self.recorder.stage = 'initial_collection'
+                print('Collection content is available. Continuing the browsing trial.', flush=True)
+            self.recorder.save()
+
     def guard(self) -> None:
         """
         Prevents the next action after a signal or the monotonic duration limit.
@@ -249,10 +320,16 @@ class Observer:
         recorder = self.recorder
         if (
             recorder.stopped is None
-            and recorder.started is not None
-            and time.monotonic() - recorder.started >= self.settings.max_duration_seconds
+            and self.verification_page is not None
+            and self.verification_seconds() >= self.settings.verification_timeout_seconds
         ):
-            recorder.stop('time_limit', elapsed=self.settings.max_duration_seconds)
+            recorder.stop('verification_timeout', **self.verification_evidence)
+        if (
+            recorder.stopped is None
+            and recorder.started is not None
+            and self.active_seconds() >= self.settings.max_duration_seconds
+        ):
+            recorder.stop('time_limit', elapsed=self.settings.max_duration_seconds + self.verification_seconds())
         if recorder.stopped is not None:
             raise TrialStopped
 
@@ -264,7 +341,7 @@ class Observer:
         self.guard()
         remaining = self.settings.navigation_timeout_seconds
         if self.recorder.started is not None:
-            remaining = min(remaining, self.settings.max_duration_seconds - (time.monotonic() - self.recorder.started))
+            remaining = min(remaining, self.settings.max_duration_seconds - self.active_seconds())
         return max(1, remaining * 1000)
 
     def poll(self) -> None:
@@ -311,8 +388,7 @@ class Observer:
                 ]
                 document = documents[-1] if documents else {}
                 response = self.responses.get(document.get('request_id'), {})
-                self.recorder.stop(
-                    'verification_required' if verification else 'denial_page',
+                details = dict(
                     tab_id=self.pages[page],
                     url=safe_url(page.url),
                     title=evidence['title'],
@@ -323,7 +399,24 @@ class Observer:
                     if verification
                     else 'suspected; requires confirmation',
                 )
+                can_wait = (
+                    verification
+                    and not denied
+                    and self.recorder.stage == 'initial_collection'
+                    and self.pages[page] == 'tab-1'
+                    and self.verification_started is None
+                    and self.settings.verification_timeout_seconds > 0
+                )
+                if can_wait:
+                    self.start_verification(page, details)
+                elif denied or self.verification_page is not page:
+                    self.recorder.stop('verification_required' if verification else 'denial_page', **details)
                 self.guard()
+            if self.verification_page is page and content_ready(page, 'overview'):
+                expected = urlsplit(self.settings.collection_url)
+                actual = urlsplit(page.url)
+                if (actual.scheme, actual.netloc, actual.path) == (expected.scheme, expected.netloc, expected.path):
+                    self.finish_verification(completed=True)
         for attempt in self.attempts:
             self.guard()
             if not attempt.ready and attempt.page is not None and content_ready(attempt.page, 'item'):

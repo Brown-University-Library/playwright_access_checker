@@ -70,6 +70,9 @@ class TestConfig(unittest.TestCase):
             ['--max-duration-seconds', '0'],
             ['--max-scroll-actions', '0'],
             ['--navigation-timeout-seconds', '-1'],
+            ['--verification-timeout-seconds', '-1'],
+            ['--verification-timeout-seconds', 'nan'],
+            ['--verification-timeout-seconds', 'inf'],
             ['--output-dir', '.'],
             ['--output-dir', 'results'],
             ['--proxy-server', 'http://user:secret@localhost:8080'],
@@ -93,6 +96,19 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(settings.unused['open_interval_seconds'], {'value': 8, 'source': 'environment'})
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.read(['--open-interval-seconds', '8'])
+
+    def test_verification_timeout_precedence_and_disable(self) -> None:
+        """
+        Checks the verification default, outer settings, environment, CLI, and zero value.
+        """
+        self.assertEqual(self.read()[0].verification_timeout_seconds, 120)
+        (self.root.parent / '.env').write_text('VERIFICATION_TIMEOUT_SECONDS=90\n', encoding='utf-8')
+        self.assertEqual(self.read()[0].verification_timeout_seconds, 90)
+        self.env['VERIFICATION_TIMEOUT_SECONDS'] = '60'
+        self.assertEqual(self.read()[0].verification_timeout_seconds, 60)
+        settings, _ = self.read(['--verification-timeout-seconds', '0'])
+        self.assertEqual(settings.verification_timeout_seconds, 0)
+        self.assertEqual(public_settings(settings)['sources']['verification_timeout_seconds'], 'command line')
 
     def test_secrets_and_timezone(self) -> None:
         """

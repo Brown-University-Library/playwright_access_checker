@@ -70,8 +70,23 @@ class Handler(BaseHTTPRequestHandler):
                 {links}<a href="?page=2&amp;per_page=50">Next Page</a>"""
             if mode == 'final_return' and site.collection_visits > 1:
                 status, headers, body = 403, {'cf-mitigated': 'challenge', 'cf-ray': 'local-final-return'}, 'Challenge'
-            if mode == 'turnstile':
-                body = '<h1>Verify you are human</h1><div class="cf-turnstile"></div>'
+            needs_verification = (
+                mode in {'turnstile', 'verification_supporting_challenge'}
+                or (
+                    mode in {'turnstile_manual', 'turnstile_wrong_collection'}
+                    and self.headers.get('Cookie') != 'local_verification=complete'
+                )
+                or (mode == 'return_turnstile' and site.collection_visits > 1)
+            )
+            if needs_verification:
+                body = """<h1>Verify you are human</h1><div class="cf-turnstile"></div>
+                    <button onclick="location.href='/complete-verification'">Complete local verification</button>"""
+            if mode == 'verification_supporting_challenge':
+                body += '<script>setTimeout(()=>fetch("/challenge"),400)</script>'
+            if mode in {'initial_denial', 'initial_challenge'}:
+                body = '<h1>Access denied</h1><div id="cf-error-details"></div><div class="cf-turnstile"></div>'
+                if mode == 'initial_challenge':
+                    status, headers = 403, {'cf-mitigated': 'challenge', 'cf-ray': 'local-initial-challenge'}
             if mode == 'turnstile_with_content':
                 body += '<div class="cf-turnstile"></div>'
             if mode == 'unsupported_restore' and size == '20':
@@ -97,6 +112,17 @@ class Handler(BaseHTTPRequestHandler):
                 status, headers = 302, {'Location': self.path + '?view=full'}
             if mode == 'denial_page':
                 body = '<h1>Access denied</h1><div id="cf-error-details">Denied</div>'
+            if mode == 'item_turnstile':
+                body = '<h1>Verify you are human</h1><div class="cf-turnstile"></div>'
+        elif path == '/complete-verification':
+            collection = 'bdr:other' if mode == 'turnstile_wrong_collection' else 'bdr:nz9qn2kb'
+            status, headers = (
+                302,
+                {
+                    'Set-Cookie': 'local_verification=complete; Path=/; HttpOnly; SameSite=Lax',
+                    'Location': f'/studio/collections/{collection}/?page=1&per_page=50',
+                },
+            )
         elif path == '/challenge' or (path == '/scroll-data' and mode == 'scroll_challenge'):
             status, headers, body = 403, {'cf-mitigated': 'challenge', 'cf-ray': 'local-test-ray'}, 'Challenge'
         elif path.startswith('/thumb/'):

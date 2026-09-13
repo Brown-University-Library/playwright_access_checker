@@ -39,11 +39,13 @@ def wait_ready(observer: Observer, page: Page, role: str, visit_id: str) -> None
     Waits separately for selected-tab content while observing other tabs.
     Called by: open_collection(), view_item(), return_to_collection(), restore_listing()
     """
-    deadline = time.monotonic() + observer.settings.navigation_timeout_seconds
+    deadline = observer.active_seconds() + observer.settings.navigation_timeout_seconds
     observer.recorder.emit('content_wait_start', tab_id=observer.pages[page], role=role, visit_id=visit_id)
-    while not content_ready(page, role):
+    while True:
         observer.poll()
-        if time.monotonic() >= deadline:
+        if content_ready(page, role) and observer.verification_page is None:
+            break
+        if observer.active_seconds() >= deadline:
             observer.recorder.stop('content_timeout', tab_id=observer.pages[page], role=role, visit_id=visit_id)
             observer.guard()
         page.wait_for_timeout(50)
@@ -497,6 +499,7 @@ def run_trial(settings: Settings, headless: bool = False) -> Recorder:
             finally:
                 recorder.metadata['observation_saved_at'] = timestamp()
                 if observer:
+                    observer.finish_verification(completed=False)
                     observer.bind_requests()
                     recorder.metadata['unfinished_requests'] = [
                         record['request_id']
