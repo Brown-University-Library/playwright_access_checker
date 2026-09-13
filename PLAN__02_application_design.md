@@ -210,6 +210,11 @@ uv run ./main.py "$COLLECTION_ID" --workflow return --view-seconds 5 --view-jitt
 ```
 
 When writing the app, keep `.env`, `runs/`, and saved browser diagnostics out of Git; the current `.gitignore` does not cover them yet. Commit only a placeholder `.env.example`. Never record authorization headers, cookies, proxy passwords, raw saved browser sessions, or a complete copy of environment variables. Store only needed public URL information and remove sensitive query values. Screenshots, saved HTML, network-recording files such as HAR, and Playwright traces should be optional local diagnostics reviewed before sharing; omit them from the first version.
+- BIRKIN-FEEDBACK: 
+    - `gitignore` does not need to include `.env`, because the `.env` will be at the outer/stuff level, not within the repo.
+    - save runs to the outer/stuff directory too (ie, to `../runs/whatever`)
+    - define "HAR"
+
 
 Each run should write:
 
