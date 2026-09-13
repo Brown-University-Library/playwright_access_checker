@@ -45,23 +45,23 @@ Edit `../.env` in the enclosing `playwright_access_checker_stuff` directory. Sup
 Run these commands from the repository root. Preview validates settings and checks the output location without launching a browser or making network requests:
 
 ```bash
-uv run ./main.py bdr:224400 --workflow tabs --preview
+uv run ./main.py bdr:nz9qn2kb --workflow tabs --preview
 ```
 
 Run one trial at a time:
 
 ```bash
-uv run ./main.py bdr:224400 --workflow tabs --seed 42
-uv run ./main.py bdr:224400 --workflow return --seed 42
+uv run ./main.py bdr:nz9qn2kb --workflow tabs --seed 42
+uv run ./main.py bdr:nz9qn2kb --workflow return --seed 42
 ```
 
 For a short initial check, limit the number of item openings:
 
 ```bash
-uv run ./main.py bdr:224400 --workflow tabs --max-items 1 --max-duration-seconds 30
+uv run ./main.py bdr:nz9qn2kb --workflow tabs --max-items 1 --max-duration-seconds 30
 ```
 
-Settings take priority in this order: command-line options, environment variables, explicitly loaded `../.env`, defaults. Relative paths are interpreted from the repository root. A Studio PID such as `bdr:224400` is required; numeric collection API identifiers and arbitrary URLs are not accepted. `--help` lists all options. `.env` interpolation is disabled so settings are read as written.
+Settings take priority in this order: command-line options, environment variables, explicitly loaded `../.env`, defaults. Relative paths are interpreted from the repository root. A Studio PID such as `bdr:nz9qn2kb` is required; numeric collection API identifiers and arbitrary URLs are not accepted. `--help` lists all options. `.env` interpolation is disabled so settings are read as written.
 
 | Setting / option | Default and meaning |
 | --- | --- |

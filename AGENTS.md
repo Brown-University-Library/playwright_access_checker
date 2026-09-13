@@ -32,8 +32,8 @@ If other instruction files exist (Copilot, IDE rules, contributor docs) and conf
 
 - Assume user is in the project-root directory.
 - Do not use `python` to run scripts.
-- Preview settings via: `uv run ./main.py bdr:224400 --workflow tabs --preview`
-- Configure `../.env` as described in `README.md`, then run one trial via: `uv run ./main.py bdr:224400 --workflow tabs`
+- Preview settings via: `uv run ./main.py bdr:nz9qn2kb --workflow tabs --preview`
+- Configure `../.env` as described in `README.md`, then run one trial via: `uv run ./main.py bdr:nz9qn2kb --workflow tabs`
 - Run tests via:
     - `uv run ./run_tests.py`
         - Note that `run_tests.py` has usage instructions about how to run more granular tests.

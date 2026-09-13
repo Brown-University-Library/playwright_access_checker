@@ -72,7 +72,7 @@ def make_parser() -> argparse.ArgumentParser:
     Called by: read_settings()
     """
     parser = argparse.ArgumentParser(description='Runs one visible Studio browsing trial and saves local evidence.')
-    parser.add_argument('collection_id', nargs='?', help='Studio PID, for example bdr:224400.')
+    parser.add_argument('collection_id', nargs='?', help='Studio PID, for example bdr:nz9qn2kb.')
     defaults = Settings()
     for name, value in asdict(defaults).items():
         if name not in {'collection_id', 'sources', 'unused', 'proxy_username', 'proxy_password'}:
@@ -130,7 +130,7 @@ def validate(settings: Settings, args: argparse.Namespace, root: Path = ROOT) ->
     Called by: read_settings()
     """
     if not re.fullmatch(r'bdr:[A-Za-z0-9]+', settings.collection_id):
-        raise ValueError('COLLECTION_ID must be a Studio PID such as bdr:224400.')
+        raise ValueError('COLLECTION_ID must be a Studio PID such as bdr:nz9qn2kb.')
     if settings.workflow not in {'tabs', 'return'}:
         raise ValueError('WORKFLOW must be tabs or return.')
     if not settings.cf_settings_label.strip() or not settings.cf_settings_notes.strip():

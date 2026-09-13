@@ -25,7 +25,7 @@ class TestConfig(unittest.TestCase):
         self.root = Path(self.temp.name) / 'repository'
         self.root.mkdir()
         self.env = {'CF_SETTINGS_LABEL': 'unknown', 'CF_SETTINGS_NOTES': 'Rules not supplied.'}
-        self.args = ['bdr:224400', '--workflow', 'tabs']
+        self.args = ['bdr:nz9qn2kb', '--workflow', 'tabs']
 
     def read(self, extra: list[str] | None = None) -> tuple:
         """
@@ -46,7 +46,7 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(settings.sources['max_items'], '../.env')
         self.assertEqual(settings.sources['seed'], 'generated')
         self.assertEqual(settings.output_dir, '../runs')
-        self.assertTrue(settings.collection_url.endswith('/bdr:224400/?page=1&per_page=50'))
+        self.assertTrue(settings.collection_url.endswith('/bdr:nz9qn2kb/?page=1&per_page=50'))
 
     def test_module_move_preserves_repository_root(self) -> None:
         """

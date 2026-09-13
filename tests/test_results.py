@@ -19,7 +19,7 @@ class TestResults(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         settings = Settings(
             output_dir=self.temp.name,
-            collection_id='bdr:224400',
+            collection_id='bdr:nz9qn2kb',
             workflow='tabs',
             cf_settings_label='test',
             cf_settings_notes='unknown',
@@ -38,7 +38,7 @@ class TestResults(unittest.TestCase):
             'collection_open',
             visit_id='collection-1',
             tab_id='tab-1',
-            url='https://example.test/studio/collections/bdr:224400/?page=1&per_page=50',
+            url='https://example.test/studio/collections/bdr:nz9qn2kb/?page=1&per_page=50',
         )
         recorder.stop('user_interrupted')
         recorder.save()

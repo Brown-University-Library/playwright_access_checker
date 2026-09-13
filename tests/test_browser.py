@@ -47,7 +47,7 @@ class TestBrowser(unittest.TestCase):
         self.site.hits = []
         self.site.collection_visits = 0
         values = {
-            'collection_id': 'bdr:224400',
+            'collection_id': 'bdr:nz9qn2kb',
             'workflow': workflow,
             'cf_settings_label': 'local test',
             'cf_settings_notes': 'Made-up responses.',
@@ -63,7 +63,7 @@ class TestBrowser(unittest.TestCase):
             'max_duration_seconds': 12,
         }
         values.update(changes)
-        url = self.site.origin + '/studio/collections/bdr:224400/?page=1&per_page=50'
+        url = self.site.origin + '/studio/collections/bdr:nz9qn2kb/?page=1&per_page=50'
         with patch.object(Settings, 'collection_url', new_callable=PropertyMock, return_value=url):
             recorder = run_trial(Settings(**values), headless=True)
         data = json.loads((recorder.directory / 'run.json').read_text())

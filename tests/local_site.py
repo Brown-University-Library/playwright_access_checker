@@ -78,7 +78,7 @@ class Handler(BaseHTTPRequestHandler):
                 body = body.replace('id="per_page-dropdown"', 'id="unavailable-control"')
         elif path.startswith('/studio/item/'):
             number = path.split('bdr:')[1].strip('/')
-            back = '/studio/collections/bdr:224400/?page=1&per_page=' + (
+            back = '/studio/collections/bdr:nz9qn2kb/?page=1&per_page=' + (
                 '20' if mode in {'reset', 'unsupported_restore'} else '50'
             )
             back_link = f'<a href="{back}">Back to Results</a>' if mode != 'missing_return' else ''
