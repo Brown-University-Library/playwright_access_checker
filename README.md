@@ -70,7 +70,7 @@ Settings take priority in this order: command-line options, environment variable
 | `OPEN_INTERVAL_SECONDS`, `OPEN_JITTER_SECONDS` | `1.0`, `0.1`: seconds between actual opening starts in `tabs`, with independent uniform variation. Delays do not cause later openings to speed up. |
 | `VIEW_SECONDS`, `VIEW_JITTER_SECONDS` | `5.0`, `0.5`: total viewing duration, including one-second pauses and scrolls of 80% of the visible height. |
 | `SELECTION_START` | `1`: select positions 1, 3, 5; use `2` for positions 2, 4, 6. |
-| `SEED` | Generated when omitted; recorded so planned timings can be repeated. |
+| `SEED` | Generated when omitted; recorded so planned timings can be repeated. (A seed sets the starting point for a random-number generator, so using the same seed with the same generator produces the same sequence of numbers.) |
 | `MAX_ITEMS` | `20`; accepts 1–20. Remaining viewing and return steps finish after opening this many items. |
 | `MAX_DURATION_SECONDS` | `300`; measured from the first collection request, including link gathering. |
 | `MAX_SCROLL_ACTIONS` | `20`; separately limits gathering links, finding a thumbnail, and finding a return link. Viewing scrolls are limited by viewing time. |
