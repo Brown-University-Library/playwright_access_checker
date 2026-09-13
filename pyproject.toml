@@ -1,13 +1,12 @@
 [project]
 name = "playwright-access-checker"
 version = "0.0.0"
-description = "Starter code for a planned Playwright-based access checker."
+description = "Records repeatable Studio browsing trials and access interference."
 readme = "README.md"
 requires-python = "==3.12.14"
 dependencies = [
-    "httpx2~=2.12.0",
+    "playwright>=1.55,<2",
     "python-dotenv~=1.2.0",
-    "trio~=0.34.0",
 ]
 
 [dependency-groups]
