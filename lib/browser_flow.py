@@ -7,10 +7,10 @@ import re
 import time
 from urllib.parse import parse_qsl, urlsplit
 
-from playwright.sync_api import Error, Locator, Page, sync_playwright
+from playwright.sync_api import Error, Locator, Page, ProxySettings, sync_playwright
 
 from lib.config import Settings
-from lib.measurement import planned_times, safe_error, safe_url, select_items
+from lib.measurement import SelectedItem, planned_times, safe_error, safe_url, select_items
 from lib.observation import Attempt, Observer, TrialStopped, content_ready
 from lib.results import Recorder, timestamp
 
@@ -161,7 +161,7 @@ def thumbnail_urls(page: Page) -> list[str]:
     return list(dict.fromkeys(urls))
 
 
-def gather_items(observer: Observer, page: Page) -> list[dict]:
+def gather_items(observer: Observer, page: Page) -> list[SelectedItem]:
     """
     Gathers page-one thumbnails within shared time and scroll limits.
     Called by: run_workflow()
@@ -380,6 +380,7 @@ def return_to_collection(observer: Observer, attempt: Attempt) -> None:
     Called by: run_workflow()
     """
     page, recorder = attempt.page, observer.recorder
+    assert page is not None, 'Returning to the collection requires an opened item tab.'
     visit_id = 'return-' + attempt.attempt_id
     recorder.stage, recorder.action_id = 'return_to_collection', visit_id
     link = page.get_by_role('link', name=re.compile(r'^\s*Back to Results\s*$')).first
@@ -481,7 +482,7 @@ def run_trial(settings: Settings, headless: bool = False) -> Recorder:
     try:
         with sync_playwright() as playwright:
             try:
-                proxy = None
+                proxy: ProxySettings | None = None
                 if settings.proxy_server:
                     proxy = {'server': settings.proxy_server}
                     if settings.proxy_username:

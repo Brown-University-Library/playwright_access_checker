@@ -43,6 +43,7 @@ class Handler(BaseHTTPRequestHandler):
         Called by: BaseHTTPRequestHandler
         """
         site = self.server
+        assert isinstance(site, LocalSite)
         path = urlsplit(self.path).path
         site.hits.append({'path': self.path, 'started': time.monotonic(), 'referer': self.headers.get('Referer')})
         mode = site.mode

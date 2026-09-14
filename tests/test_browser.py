@@ -173,6 +173,7 @@ class TestBrowser(unittest.TestCase):
                 page.goto(self.site.origin + '/studio/collections/bdr:nz9qn2kb/?page=1&per_page=50')
                 link = page.locator('.item-thumbnail a').first
                 original_href = link.get_attribute('href')
+                assert original_href is not None
                 for original_target in (None, '_self'):
                     with self.subTest(original_target=original_target):
                         if original_target is not None:

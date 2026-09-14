@@ -131,10 +131,11 @@ class Observer:
                 self.on_page(page)
             role_url = request.url if request.resource_type == 'document' or page is None else page.url
             role = 'overview' if '/studio/collections/' in role_url else 'item' if '/studio/item/' in role_url else 'unknown'
-            redirected = self.requests.get(request.redirected_from, {})
+            redirected_from = request.redirected_from
+            redirected = self.requests.get(redirected_from, {}) if redirected_from is not None else {}
             details = {
                 'request_id': f'request-{len(self.requests) + 1}',
-                'tab_id': self.pages.get(page),
+                'tab_id': self.pages[page] if page is not None else None,
                 'url': safe_url(request.url),
                 'hostname': parts.hostname,
                 'included_host': included,
@@ -324,7 +325,7 @@ class Observer:
                     if record['tab_id'] == self.pages[page] and record['resource_type'] == 'document'
                 ]
                 document = documents[-1] if documents else {}
-                response = self.responses.get(document.get('request_id'), {})
+                response = self.responses.get(document['request_id'], {}) if document else {}
                 self.recorder.stop(
                     'verification_required' if verification else 'denial_page',
                     tab_id=self.pages[page],
@@ -375,7 +376,7 @@ class Observer:
                 self.recorder.stop(
                     'page_opening_timeout',
                     attempt_id=attempt.attempt_id,
-                    tab_id=self.pages.get(attempt.page),
+                    tab_id=self.pages[attempt.page] if attempt.page is not None else None,
                     request_id=documents[-1]['request_id'] if documents else None,
                     url=safe_url(attempt.url),
                     page_assigned=attempt.page is not None,
