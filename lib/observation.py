@@ -42,7 +42,7 @@ def content_ready(page: Page, role: str) -> bool:
         else:
             ready = (
                 '/studio/item/' in page.url
-                and page.locator('h1').is_visible()
+                and page.locator('h1:visible').count() > 0
                 and page.locator('#content-main').is_visible()
             )
             ready = ready and page.locator('#display-content, #description, #access_conditions').count() > 0
@@ -220,7 +220,7 @@ class Observer:
 
     def bind_requests(self) -> None:
         """
-        Adds late tab attribution without recounting early popup requests.
+        Matches requests and tabs, using the page URL when a request was not observed.
         Called by: poll()
         """
         for request, record in list(self.requests.items()):
@@ -238,8 +238,21 @@ class Observer:
                         original = original.redirected_from
                     if original.url == attempt.url and record['tab_id']:
                         attempt.page = self.request_page(request)
-                        self.recorder.emit('attempt_tab', attempt_id=attempt.attempt_id, tab_id=record['tab_id'])
+                        self.recorder.emit(
+                            'attempt_tab', attempt_id=attempt.attempt_id, tab_id=record['tab_id'], source='request'
+                        )
                         break
+            if attempt.page is None:
+                assigned = {item.page for item in self.attempts if item.page is not None}
+                matches = [page for page in self.pages if page not in assigned and page.url == attempt.url]
+                if len(matches) == 1:
+                    attempt.page = matches[0]
+                    self.recorder.emit(
+                        'attempt_tab',
+                        attempt_id=attempt.attempt_id,
+                        tab_id=self.pages[attempt.page],
+                        source='page_url',
+                    )
 
     def guard(self) -> None:
         """
@@ -287,6 +300,7 @@ class Observer:
                     turnstile_script: !!document.querySelector('script[src*="challenges.cloudflare.com/turnstile/"]'),
                     parsed: document.readyState !== 'loading',
                     expected: !!document.querySelector('#item-results, #content-main #description, #content-main #display-content'),
+                    heading_count: document.querySelectorAll('h1').length,
                     heading: document.querySelector('h1')?.textContent?.trim().slice(0, 300) || ''})""")
             except Error:
                 continue
@@ -329,6 +343,14 @@ class Observer:
             if not attempt.ready and attempt.page is not None and content_ready(attempt.page, 'item'):
                 self.guard()
                 attempt.ready = True
+                if not attempt.document_received:
+                    self.recorder.emit(
+                        'request_evidence_missing',
+                        attempt_id=attempt.attempt_id,
+                        tab_id=self.pages[attempt.page],
+                        url=safe_url(attempt.url),
+                        detail='Item content is ready, but its document response was not recorded.',
+                    )
                 self.recorder.emit(
                     'item_ready',
                     attempt_id=attempt.attempt_id,
@@ -343,7 +365,23 @@ class Observer:
                     title=attempt.page.title(),
                 )
             if time.monotonic() - attempt.started >= self.settings.navigation_timeout_seconds and (
-                attempt.page is None or not attempt.document_received
+                attempt.page is None or (not attempt.document_received and not attempt.ready)
             ):
-                self.recorder.stop('page_opening_timeout', attempt_id=attempt.attempt_id)
+                documents = [
+                    record
+                    for record in self.requests.values()
+                    if record['resource_type'] == 'document' and record['url'] == safe_url(attempt.url)
+                ]
+                self.recorder.stop(
+                    'page_opening_timeout',
+                    attempt_id=attempt.attempt_id,
+                    tab_id=self.pages.get(attempt.page),
+                    request_id=documents[-1]['request_id'] if documents else None,
+                    url=safe_url(attempt.url),
+                    page_assigned=attempt.page is not None,
+                    document_received=attempt.document_received,
+                    error='No tab was matched to the selected item before the opening timeout.'
+                    if attempt.page is None
+                    else 'The matched tab has neither a recorded document response nor ready item content.',
+                )
                 self.guard()
