@@ -5,6 +5,7 @@ Saves local events immediately and builds reports without further requests.
 import json
 import os
 import platform
+import re
 import subprocess
 import time
 import uuid
@@ -143,6 +144,15 @@ def cell(value: object) -> str:
     )
 
 
+def vendor_wording(value: str | None) -> str | None:
+    """
+    Uses network-filter vendor wording in report text without changing stored values.
+    Called by: write_summary()
+    """
+    result = re.sub(r'\bcloudflare\b', 'network-filter vendor', value, flags=re.IGNORECASE) if value is not None else None
+    return result
+
+
 def timing_text(values: dict | None) -> str:
     """
     Describes average and range or explicitly marks unavailable values.
@@ -203,12 +213,12 @@ def write_summary(directory: Path, data: dict, events: list[dict]) -> None:
         '',
         f'- Started: {cell(data.get("measurement_started_at", data["created_at"]))}.',
         f'- Observed duration: {cell(data.get("observed_seconds"))} seconds. Workflow: {settings["workflow"]}.',
-        f'- Cloudflare settings (user supplied): {cell(settings["cf_settings_label"])}. {cell(settings["cf_settings_notes"])}',
+        f'- network-filter vendor settings (user supplied): {cell(vendor_wording(settings["cf_settings_label"]))}. {cell(vendor_wording(settings["cf_settings_notes"]))}',
         f'- Settings took effect: {cell(settings["cf_settings_since"])}.',
         f'- Connection: {cell(settings["network_label"])}; public IP: {cell(settings["public_ip"])}. {cell(settings["ip_notes"])}',
         f'- Included BDR hosts: {cell(settings["bdr_hosts"])}.',
         f'- Stopped during {cell(stop.get("stage"))}, tab {cell(stop.get("tab_id"))}, request {cell(stop.get("request_id"))}.',
-        f'- Evidence: HTTP {cell(stop.get("status"))}; source: {cell(stop.get("source"))}; Ray ID: {cell(stop.get("headers", {}).get("cf-ray"))}.',
+        f'- Evidence: HTTP {cell(stop.get("status"))}; source: {cell(vendor_wording(stop.get("source")))}; Ray ID: {cell(stop.get("headers", {}).get("cf-ray"))}.',
         f'- Affected URL: {cell(stop.get("url"))}. Error: {cell(stop.get("error", stop.get("failure")))}.',
         f'- Selected links: {len(data["selected"])}; item attempts: {totals.get("item_attempts", 0)}; ready: {totals.get("item_successes", 0)}; completed views: {totals.get("completed_views", 0)}.',
         f'- Total BDR page requests: {totals.get("page_requests", 0)}; all BDR HTTP requests: {totals.get("all_bdr_requests", 0)}; other HTTP requests: {totals.get("other_requests", 0)}.',
@@ -362,7 +372,7 @@ def write_summary(directory: Path, data: dict, events: list[dict]) -> None:
     comparison = [
         data['trial_id'],
         data.get('measurement_started_at', data['created_at']),
-        settings['cf_settings_label'],
+        vendor_wording(settings['cf_settings_label']),
         settings['workflow'],
         f'{settings["selection_start"]}/{settings["max_items"]}',
         opening,
@@ -385,7 +395,7 @@ def write_summary(directory: Path, data: dict, events: list[dict]) -> None:
             '',
             '## Known unknowns and evidence limits',
             '',
-            *['- ' + cell(note) for note in data['known_unknowns']],
+            *['- ' + cell(vendor_wording(note)) for note in data['known_unknowns']],
             '',
             '## Central IT findings',
             '',
