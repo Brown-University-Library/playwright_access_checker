@@ -227,9 +227,18 @@ def write_summary(directory: Path, data: dict, events: list[dict]) -> None:
         '',
         '## Request counts',
         '',
-        'Each row counts starts across all tabs. Successes were observed ready by the row’s end.',
+        'Each row counts item openings and HTTP request starts across all tabs during the stated period.',
+        'Ready and Completed views refer only to items opened during that same period, '
+        'and only if they were ready or their views completed by the period’s end. '
+        'Views of items opened earlier are excluded, even if those views finished during the period.',
+        'Page requests are included in All BDR, not additional requests.',
         '',
-        '| Preceding seconds | Observed seconds | Coverage | Attempts | Ready | Completed views | Page requests | All BDR | Other hosts |',
+        '### Activity started during the final N seconds',
+        '',
+        'These periods end when the run stops. If the run was shorter than N seconds, '
+        'the row covers only the observed part of that period.',
+        '',
+        '| Final N seconds | Observed seconds | Coverage | Attempts | Ready | Completed views | Page requests | All BDR | Other hosts |',
         '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
     ]
     for row in analysis['preceding_periods']:
@@ -248,7 +257,11 @@ def write_summary(directory: Path, data: dict, events: list[dict]) -> None:
     lines.extend(
         [
             '',
-            '| Seconds from start | Attempts | Ready | Completed views | Page requests | All BDR | Other hosts |',
+            '### Cumulative activity during the first N seconds',
+            '',
+            'These periods begin when measurement starts. Counts are unavailable if the run ended before N seconds.',
+            '',
+            '| First N seconds | Attempts | Ready | Completed views | Page requests | All BDR | Other hosts |',
             '| --- | --- | --- | --- | --- | --- | --- |',
         ]
     )
