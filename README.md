@@ -17,6 +17,8 @@ Contents:
 - [More info](#more-info)
 - [Local installation](#local-installation)
 - [Usage](#usage)
+- [Settings](#settings)
+- [Implementation notes](#implementation-notes)
 - [Results and interpretation](#results-and-interpretation)
 - [Tests](#tests)
 - [Primary dependencies](#primary-dependencies)
@@ -137,11 +139,7 @@ Run all tests:
 uv run ./run_tests.py
 ```
 
-Run a single test with verbose output:
-
-```bash
-uv run ./run_tests.py tests.test_measurement --verbose
-```
+See the `run_tests.py` docstring for info on running more specific tests.
 
 The suite uses `unittest` and a loopback-only local website with real headless Chromium. It requires installed Chromium and permission to start a local HTTP server. It tests both workflows, overlapping loads, page-size restoration, scrolling, redirects, interruption, request counts, and interference in background tabs and supporting requests. Automated tests do not contact BDR. See [run_tests.py](run_tests.py) for module and class selection and [AGENTS.md](AGENTS.md) for coding instructions.
 
