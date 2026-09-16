@@ -29,51 +29,71 @@ No interference observed within these limits.
 
 ## Request counts
 
-Each row counts starts across all tabs. Successes were observed ready by the row’s end.
+Each row counts item openings and HTTP request starts across all tabs during the stated period.
+Ready and Completed views refer only to items opened during that same period, and only if they were ready or their views completed by the period’s end. Views of items opened earlier are excluded, even if those views finished during the period.
+Page requests are included in All BDR, not additional requests.
 
-| Preceding seconds | Observed seconds | Coverage | Attempts | Ready | Completed views | Page requests | All BDR | Other hosts |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 30 | 30.000 | full | 0 | 0 | 0 | 0 | 0 | 0 |
-| 60 | 60.000 | full | 0 | 0 | 0 | 0 | 0 | 0 |
-| 120 | 120.000 | full | 16 | 16 | 16 | 16 | 591 | 308 |
-| 300 | 124.828 | partial observation | 20 | 20 | 20 | 21 | 850 | 398 |
+### Cumulative activity during the first N seconds
 
-| Seconds from start | Attempts | Ready | Completed views | Page requests | All BDR | Other hosts |
+These periods begin when measurement starts. Counts are unavailable if the run ended before N seconds.
+
+| First N seconds | Attempts | Ready | Completed views | Page requests | All BDR | Other hosts |
 | --- | --- | --- | --- | --- | --- | --- |
 | 30 | 20 | 20 | 1 | 21 | 850 | 398 |
 | 60 | 20 | 20 | 7 | 21 | 850 | 398 |
 | 120 | 20 | 20 | 19 | 21 | 850 | 398 |
 | 300 | unavailable | unavailable | unavailable | unavailable | unavailable | unavailable |
 
-Request breakdowns by hostname, content type, tab, page role, and stage are in `run.json`.
+### Activity started during the final N seconds
+
+These periods end when the run stops. If the run was shorter than N seconds, the row covers only the observed part of that period.
+
+| Final N seconds | Observed seconds | Coverage | Attempts | Ready | Completed views | Page requests | All BDR | Other hosts |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 30 | 30.000 | full | 0 | 0 | 0 | 0 | 0 | 0 |
+| 60 | 60.000 | full | 0 | 0 | 0 | 0 | 0 | 0 |
+| 120 | 120.000 | full | 16 | 16 | 16 | 16 | 591 | 308 |
+| 300 | 124.828 | partial observation | 20 | 20 | 20 | 21 | 850 | 398 |
+
+### **BDR requests by resource type:**
+
+- image 726
+- stylesheet 41
+- document 21
+- font 21
+- script 21
+- xhr 20
+
+Further BDR request breakdowns by hostname, tab, page role, and stage are in `run.json`.
 
 ## Checked URLs
 
 Only attempted visits appear here. Selected but unopened items remain in `run.json`.
+URLs are requested URLs; → shows a different final URL or that the final URL is unavailable.
 
-| Local Eastern start | Step | Tab | Requested URL | Final URL | Result |
-| --- | --- | --- | --- | --- | --- |
-| 2026-09-16T09:12:51.169006-0400 EDT | collection open | tab-1 | https://repository.library.brown.edu/studio/collections/bdr:nz9qn2kb/?page=1&amp;per_page=50 | https://repository.library.brown.edu/studio/collections/bdr:nz9qn2kb/?page=1&amp;per_page=50 | ready |
-| 2026-09-16T09:12:52.181317-0400 EDT | item open | tab-2 | https://repository.library.brown.edu/studio/item/bdr:597184/ | https://repository.library.brown.edu/studio/item/bdr:597184/ | ready |
-| 2026-09-16T09:12:53.272705-0400 EDT | item open | tab-3 | https://repository.library.brown.edu/studio/item/bdr:597186/ | https://repository.library.brown.edu/studio/item/bdr:597186/ | ready |
-| 2026-09-16T09:12:54.244873-0400 EDT | item open | tab-4 | https://repository.library.brown.edu/studio/item/bdr:741109/ | https://repository.library.brown.edu/studio/item/bdr:741109/ | ready |
-| 2026-09-16T09:12:55.265017-0400 EDT | item open | tab-5 | https://repository.library.brown.edu/studio/item/bdr:747072/ | https://repository.library.brown.edu/studio/item/bdr:747072/ | ready |
-| 2026-09-16T09:12:56.278460-0400 EDT | item open | tab-6 | https://repository.library.brown.edu/studio/item/bdr:597187/ | https://repository.library.brown.edu/studio/item/bdr:597187/ | ready |
-| 2026-09-16T09:12:57.398645-0400 EDT | item open | tab-7 | https://repository.library.brown.edu/studio/item/bdr:758319/ | https://repository.library.brown.edu/studio/item/bdr:758319/ | ready |
-| 2026-09-16T09:12:58.512046-0400 EDT | item open | tab-8 | https://repository.library.brown.edu/studio/item/bdr:597189/ | https://repository.library.brown.edu/studio/item/bdr:597189/ | ready |
-| 2026-09-16T09:12:59.666969-0400 EDT | item open | tab-9 | https://repository.library.brown.edu/studio/item/bdr:745156/ | https://repository.library.brown.edu/studio/item/bdr:745156/ | ready |
-| 2026-09-16T09:13:00.661005-0400 EDT | item open | tab-10 | https://repository.library.brown.edu/studio/item/bdr:752247/ | https://repository.library.brown.edu/studio/item/bdr:752247/ | ready |
-| 2026-09-16T09:13:01.724787-0400 EDT | item open | tab-11 | https://repository.library.brown.edu/studio/item/bdr:597192/ | https://repository.library.brown.edu/studio/item/bdr:597192/ | ready |
-| 2026-09-16T09:13:02.711341-0400 EDT | item open | tab-12 | https://repository.library.brown.edu/studio/item/bdr:597195/ | https://repository.library.brown.edu/studio/item/bdr:597195/ | ready |
-| 2026-09-16T09:13:03.737884-0400 EDT | item open | tab-13 | https://repository.library.brown.edu/studio/item/bdr:597196/ | https://repository.library.brown.edu/studio/item/bdr:597196/ | ready |
-| 2026-09-16T09:13:04.836253-0400 EDT | item open | tab-14 | https://repository.library.brown.edu/studio/item/bdr:597201/ | https://repository.library.brown.edu/studio/item/bdr:597201/ | ready |
-| 2026-09-16T09:13:05.826419-0400 EDT | item open | tab-15 | https://repository.library.brown.edu/studio/item/bdr:756450/ | https://repository.library.brown.edu/studio/item/bdr:756450/ | ready |
-| 2026-09-16T09:13:06.856657-0400 EDT | item open | tab-16 | https://repository.library.brown.edu/studio/item/bdr:758456/ | https://repository.library.brown.edu/studio/item/bdr:758456/ | ready |
-| 2026-09-16T09:13:08.008580-0400 EDT | item open | tab-17 | https://repository.library.brown.edu/studio/item/bdr:742222/ | https://repository.library.brown.edu/studio/item/bdr:742222/ | ready |
-| 2026-09-16T09:13:09.117427-0400 EDT | item open | tab-18 | https://repository.library.brown.edu/studio/item/bdr:754041/ | https://repository.library.brown.edu/studio/item/bdr:754041/ | ready |
-| 2026-09-16T09:13:10.160998-0400 EDT | item open | tab-19 | https://repository.library.brown.edu/studio/item/bdr:743505/ | https://repository.library.brown.edu/studio/item/bdr:743505/ | ready |
-| 2026-09-16T09:13:11.288783-0400 EDT | item open | tab-20 | https://repository.library.brown.edu/studio/item/bdr:749083/ | https://repository.library.brown.edu/studio/item/bdr:749083/ | ready |
-| 2026-09-16T09:13:12.463192-0400 EDT | item open | tab-21 | https://repository.library.brown.edu/studio/item/bdr:752238/ | https://repository.library.brown.edu/studio/item/bdr:752238/ | ready |
+| Local Eastern start | Step | Tab | URL | Result |
+| --- | --- | --- | --- | --- |
+| 2026-09-16T09:12:51.169006-0400 EDT | collection open | tab-1 | https://repository.library.brown.edu/studio/collections/bdr:nz9qn2kb/?page=1&amp;per_page=50 | ready |
+| 2026-09-16T09:12:52.181317-0400 EDT | item open | tab-2 | https://repository.library.brown.edu/studio/item/bdr:597184/ | ready |
+| 2026-09-16T09:12:53.272705-0400 EDT | item open | tab-3 | https://repository.library.brown.edu/studio/item/bdr:597186/ | ready |
+| 2026-09-16T09:12:54.244873-0400 EDT | item open | tab-4 | https://repository.library.brown.edu/studio/item/bdr:741109/ | ready |
+| 2026-09-16T09:12:55.265017-0400 EDT | item open | tab-5 | https://repository.library.brown.edu/studio/item/bdr:747072/ | ready |
+| 2026-09-16T09:12:56.278460-0400 EDT | item open | tab-6 | https://repository.library.brown.edu/studio/item/bdr:597187/ | ready |
+| 2026-09-16T09:12:57.398645-0400 EDT | item open | tab-7 | https://repository.library.brown.edu/studio/item/bdr:758319/ | ready |
+| 2026-09-16T09:12:58.512046-0400 EDT | item open | tab-8 | https://repository.library.brown.edu/studio/item/bdr:597189/ | ready |
+| 2026-09-16T09:12:59.666969-0400 EDT | item open | tab-9 | https://repository.library.brown.edu/studio/item/bdr:745156/ | ready |
+| 2026-09-16T09:13:00.661005-0400 EDT | item open | tab-10 | https://repository.library.brown.edu/studio/item/bdr:752247/ | ready |
+| 2026-09-16T09:13:01.724787-0400 EDT | item open | tab-11 | https://repository.library.brown.edu/studio/item/bdr:597192/ | ready |
+| 2026-09-16T09:13:02.711341-0400 EDT | item open | tab-12 | https://repository.library.brown.edu/studio/item/bdr:597195/ | ready |
+| 2026-09-16T09:13:03.737884-0400 EDT | item open | tab-13 | https://repository.library.brown.edu/studio/item/bdr:597196/ | ready |
+| 2026-09-16T09:13:04.836253-0400 EDT | item open | tab-14 | https://repository.library.brown.edu/studio/item/bdr:597201/ | ready |
+| 2026-09-16T09:13:05.826419-0400 EDT | item open | tab-15 | https://repository.library.brown.edu/studio/item/bdr:756450/ | ready |
+| 2026-09-16T09:13:06.856657-0400 EDT | item open | tab-16 | https://repository.library.brown.edu/studio/item/bdr:758456/ | ready |
+| 2026-09-16T09:13:08.008580-0400 EDT | item open | tab-17 | https://repository.library.brown.edu/studio/item/bdr:742222/ | ready |
+| 2026-09-16T09:13:09.117427-0400 EDT | item open | tab-18 | https://repository.library.brown.edu/studio/item/bdr:754041/ | ready |
+| 2026-09-16T09:13:10.160998-0400 EDT | item open | tab-19 | https://repository.library.brown.edu/studio/item/bdr:743505/ | ready |
+| 2026-09-16T09:13:11.288783-0400 EDT | item open | tab-20 | https://repository.library.brown.edu/studio/item/bdr:749083/ | ready |
+| 2026-09-16T09:13:12.463192-0400 EDT | item open | tab-21 | https://repository.library.brown.edu/studio/item/bdr:752238/ | ready |
 
 ## Viewing and tab switches
 
