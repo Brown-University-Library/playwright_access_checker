@@ -117,6 +117,8 @@ Each trial creates `../runs/<trial-id>/` containing:
 - `events.jsonl`: immediately flushed actions, requests, responses, failures, content readiness, tab switches, scrolling, viewing, and stopping evidence.
 - `summary.md`: conditions, checked URLs, actual timings, completed and interrupted views, preceding 30/60/120/300-second counts, totals at those marks when reached, a comparison row, and known evidence limits.
 
+Request counts include only the requests captured by the app. In the tabs workflow, some initial item-page requests may be missing even when the pages load and scroll normally. The report warns when initial page responses were not recorded. Treat counts from those runs as incomplete; they cannot establish the total number of requests or a website’s request limit.
+
 Durations use a monotonic clock. Dates use `America/New_York` with the numeric offset and EST/EDT label. Shorter observations are labeled partial; time marks not reached are unavailable. Switching tabs and scrolling are separate from item-opening attempts. Finishing a viewing duration does not mean the browser reached the bottom or finished loading every viewer file.
 
 The browser closes after results are saved. Press Ctrl-C to stop and retain evidence. Exit status is `0` for a completed workflow, `1` for interference or an incomplete trial, `130` for interruption, and `2` for invalid arguments. Missing Chromium binaries produce a saved startup-error report; install the browser with the command above.
