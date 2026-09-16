@@ -24,35 +24,53 @@ Contents:
 
 ## Local installation
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/). It manages the Python 3.12 interpreter required by [pyproject.toml](pyproject.toml).
+Requirements: [uv](https://docs.astral.sh/uv/getting-started/installation/) is installed.
 
-Starting in the directory where you want to keep the checkout:
 
 ```bash
-mkdir playwright_access_checker_stuff
-cd playwright_access_checker_stuff
-git clone https://github.com/birkin/playwright_access_checker.git playwright_access_checker
-cd playwright_access_checker
+mkdir ./playwright_access_checker_stuff
+cd ./playwright_access_checker_stuff
+git clone git@github.com:Brown-University-Library/playwright_access_checker.git
+cd ./playwright_access_checker
 uv sync --locked
 uv run playwright install chromium
-test -e ../.env || cp .env.example ../.env
+test -e ../.env || cp ./.env.example ../.env  # if the .env file doesn't already exist, copy it from the example-file
 ```
 
-Edit `../.env` in the enclosing `playwright_access_checker_stuff` directory. Supply the Cloudflare settings label and notes; use `unknown` when the settings have not been confirmed. Record when the settings took effect as an ISO date/time with an offset, or `unknown`. Record the connection, public IP, and any relevant recent activity. The app does not independently verify these details. Linux installations may also need Chromium's system dependencies; see [Playwright's browser installation instructions](https://playwright.dev/python/docs/browsers#install-system-dependencies).
+That's it!
+
+These default `.env` settings will access the Herbarium collection-page, and open items within that collection, as described further below.
+
+Other install notes:
+
+- Linux installations may also need Chromium's system dependencies; see [Playwright's browser installation instructions](https://playwright.dev/python/docs/browsers#install-system-dependencies).
+
 
 ## Usage
 
-Run these commands from the repository root. Preview validates settings and checks the output location without launching a browser or making network requests:
 
-```bash
-uv run ./main.py bdr:nz9qn2kb --workflow tabs --preview
-```
-
-Run one trial at a time:
+### Typical usage
 
 ```bash
 uv run ./main.py bdr:nz9qn2kb --workflow tabs --seed 42
+```
+
+...or:
+
+```
 uv run ./main.py bdr:nz9qn2kb --workflow return --seed 42
+```
+
+The "tabs" option, with the default settings, opens the Herbarium collections page at a url that displays 50 items. It then simulates right-clicking every other item (about 1 click per second) to open a total of 20 tabs. It then goes to each tab, one after another, scrolling down the page, spending about 5-seconds on each page.
+
+The "return" option, with the default settings, opens the Herbarium collections page at a url that displays 50 items (same so far). It then opens up an item, spends about 5-seconds scrolling through it, then returns to the collection-page, and opens another item -- going through a total of 20 items.
+
+### Other usage notes
+
+The `--preview` option validates settings and checks the output location without launching a browser or making network requests:
+
+```bash
+uv run ./main.py bdr:nz9qn2kb --workflow tabs --preview
 ```
 
 For a short initial check, limit the number of item openings:
@@ -61,7 +79,10 @@ For a short initial check, limit the number of item openings:
 uv run ./main.py bdr:nz9qn2kb --workflow tabs --max-items 1 --max-duration-seconds 30
 ```
 
-Settings take priority in this order: command-line options, environment variables, explicitly loaded `../.env`, defaults. Relative paths are interpreted from the repository root. A Studio PID such as `bdr:nz9qn2kb` is required; numeric collection API identifiers and arbitrary URLs are not accepted. `--help` lists all options. `.env` interpolation is disabled so settings are read as written.
+
+## Settings
+
+Settings take priority in this order: command-line options, environment variables, explicitly loaded `../.env`, defaults. Relative paths are interpreted from the repository root. A Studio collection-PID such as `bdr:nz9qn2kb` is required; numeric collection API identifiers and arbitrary URLs are not accepted. `--help` lists all options. 
 
 | Setting / option | Default and meaning |
 | --- | --- |
