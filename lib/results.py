@@ -233,14 +233,30 @@ def write_summary(directory: Path, data: dict, events: list[dict]) -> None:
         'Views of items opened earlier are excluded, even if those views finished during the period.',
         'Page requests are included in All BDR, not additional requests.',
         '',
-        '### Activity started during the final N seconds',
+        '### Cumulative activity during the first N seconds',
         '',
-        'These periods end when the run stops. If the run was shorter than N seconds, '
-        'the row covers only the observed part of that period.',
+        'These periods begin when measurement starts. Counts are unavailable if the run ended before N seconds.',
         '',
-        '| Final N seconds | Observed seconds | Coverage | Attempts | Ready | Completed views | Page requests | All BDR | Other hosts |',
-        '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+        '| First N seconds | Attempts | Ready | Completed views | Page requests | All BDR | Other hosts |',
+        '| --- | --- | --- | --- | --- | --- | --- |',
     ]
+    for mark, totals in analysis['totals_at_marks'].items():
+        keys = ('item_attempts', 'item_successes', 'completed_views', 'page_requests', 'all_bdr_requests', 'other_requests')
+        lines.append(
+            '| ' + mark + ' | ' + ' | '.join(cell(totals[key] if totals is not None else None) for key in keys) + ' |'
+        )
+    lines.extend(
+        [
+            '',
+            '### Activity started during the final N seconds',
+            '',
+            'These periods end when the run stops. If the run was shorter than N seconds, '
+            'the row covers only the observed part of that period.',
+            '',
+            '| Final N seconds | Observed seconds | Coverage | Attempts | Ready | Completed views | Page requests | All BDR | Other hosts |',
+            '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+        ]
+    )
     for row in analysis['preceding_periods']:
         values = [
             row['seconds'],
@@ -254,33 +270,29 @@ def write_summary(directory: Path, data: dict, events: list[dict]) -> None:
             row['other_requests'],
         ]
         lines.append('| ' + ' | '.join(cell(value) for value in values) + ' |')
+    resource_counts = analysis['breakdowns'].get('resource_type', {})
+    resource_lines = [
+        f'- {cell(kind)} {count}'
+        for kind, count in sorted(resource_counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+    if not resource_lines:
+        resource_lines = ['No BDR requests recorded.' if analysis['totals'] is not None else 'Unavailable.']
     lines.extend(
         [
             '',
-            '### Cumulative activity during the first N seconds',
+            '### **BDR requests by resource type:**',
             '',
-            'These periods begin when measurement starts. Counts are unavailable if the run ended before N seconds.',
+            *resource_lines,
             '',
-            '| First N seconds | Attempts | Ready | Completed views | Page requests | All BDR | Other hosts |',
-            '| --- | --- | --- | --- | --- | --- | --- |',
-        ]
-    )
-    for mark, totals in analysis['totals_at_marks'].items():
-        keys = ('item_attempts', 'item_successes', 'completed_views', 'page_requests', 'all_bdr_requests', 'other_requests')
-        lines.append(
-            '| ' + mark + ' | ' + ' | '.join(cell(totals[key] if totals is not None else None) for key in keys) + ' |'
-        )
-    lines.extend(
-        [
-            '',
-            'Request breakdowns by hostname, content type, tab, page role, and stage are in `run.json`.',
+            'Further BDR request breakdowns by hostname, tab, page role, and stage are in `run.json`.',
             '',
             '## Checked URLs',
             '',
             'Only attempted visits appear here. Selected but unopened items remain in `run.json`.',
+            'URLs are requested URLs; → shows a different final URL or that the final URL is unavailable.',
             '',
-            '| Local Eastern start | Step | Tab | Requested URL | Final URL | Result |',
-            '| --- | --- | --- | --- | --- | --- |',
+            '| Local Eastern start | Step | Tab | URL | Result |',
+            '| --- | --- | --- | --- | --- |',
         ]
     )
     bindings = {event['attempt_id']: event['tab_id'] for event in events if event['kind'] == 'attempt_tab'}
@@ -306,6 +318,9 @@ def write_summary(directory: Path, data: dict, events: list[dict]) -> None:
                 and not change['after_stop']
             ]
             final_url = final.get('url') or (changes[-1]['url'] if changes else None)
+            url_text = event['url']
+            if final_url != event['url']:
+                url_text += f' → {final_url or "unavailable"}'
             lines.append(
                 '| '
                 + ' | '.join(
@@ -314,8 +329,7 @@ def write_summary(directory: Path, data: dict, events: list[dict]) -> None:
                         event['local_time'],
                         event['kind'].replace('_', ' '),
                         tab_id,
-                        event['url'],
-                        final_url,
+                        url_text,
                         'ready' if final else 'unfinished at stop',
                     ]
                 )
