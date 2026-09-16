@@ -94,6 +94,9 @@ class Handler(BaseHTTPRequestHandler):
             )
             supporting = '<img src="/challenge">' if mode == 'supporting_challenge' else ''
             body = f'{back_link}<h1>Item {number}</h1><main id="content-main"><div id="description">Item description</div><div style="height:{height}px">Page content {supporting}</div></main>{lazy}{background}'
+            if mode == 'hidden_item_title':
+                body = body.replace(f'<h1>Item {number}</h1>', f'<h1 hidden>Item {number}</h1>')
+            body += '<div id="feedbackModal" hidden><h1 class="modal-title">Feedback</h1></div>'
             if mode == 'redirect' and number == '1' and not urlsplit(self.path).query:
                 status, headers = 302, {'Location': self.path + '?view=full'}
             if mode == 'denial_page':

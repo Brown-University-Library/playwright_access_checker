@@ -206,6 +206,16 @@ class TestBrowser(unittest.TestCase):
         self.assertEqual(end['scrolls'], 0)
         self.assertTrue(end['bottom_reached'])
 
+    def test_hidden_headings_do_not_make_item_ready(self) -> None:
+        """
+        Checks item content alone is not ready while both item and feedback headings are hidden.
+        """
+        recorder, data = self.run_case(mode='hidden_item_title', max_items=1, navigation_timeout_seconds=0.4)
+        self.assertEqual(data['stop_reason'], 'content_timeout', data.get('stop'))
+        self.assertEqual(data['analysis']['totals']['item_successes'], 0)
+        self.assertEqual(data['analysis']['totals']['completed_views'], 0)
+        self.assertFalse(any(event['kind'] == 'view_start' for event in recorder.events))
+
     def test_interference_stops_all_further_actions(self) -> None:
         """
         Checks challenges in supporting files, background tabs, scrolling, and final returns.

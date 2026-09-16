@@ -42,7 +42,7 @@ def content_ready(page: Page, role: str) -> bool:
         else:
             ready = (
                 '/studio/item/' in page.url
-                and page.locator('h1').is_visible()
+                and page.locator('h1:visible').count() > 0
                 and page.locator('#content-main').is_visible()
             )
             ready = ready and page.locator('#display-content, #description, #access_conditions').count() > 0
