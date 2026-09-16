@@ -51,13 +51,13 @@ Other install notes:
 ### Typical usage
 
 ```bash
-uv run ./main.py bdr:nz9qn2kb --workflow tabs --seed 42
+uv run ./main.py bdr:nz9qn2kb --workflow tabs
 ```
 
 ...or:
 
 ```
-uv run ./main.py bdr:nz9qn2kb --workflow return --seed 42
+uv run ./main.py bdr:nz9qn2kb --workflow return
 ```
 
 ### Other usage notes
