@@ -2,15 +2,14 @@
 
 ## Brief overview
 
-Runs repeatable, visible browser trials against Brown Digital Repository Studio. It records when access interference occurs and saves evidence for discussions with Central IT.
+This app runs a repeatable browser trial against the Brown Digital Repository Studio. It records browser requests, and if/when access interference occurs. The purpose is to have objective data when working with central-IT on vendor web-traffic configuration.
+
 
 ## More info
 
-Each invocation runs one trial in a new Chromium session. Both workflows request collection page 1 with 50 items per page and select every other distinct thumbnail, up to 20 items. `tabs` opens the selected links in separate tabs before viewing them in order. `return` opens, views, and follows the item's actual return link before opening the next item. Viewing includes section-by-section scrolling and pauses. The browser keeps normal images, JavaScript, cookies, and caching enabled.
+Each invocation runs one trial in a new Chromium session. Both workflows request collection page 1 with 50 items per page and select every other distinct thumbnail, up to 20 items. The `tabs` workflow opens the selected links in separate tabs before viewing them in order. The `return` workflow opens, views, and follows the item's actual return link before opening the next item. Viewing includes section-by-section scrolling and pauses. The browser keeps normal images, JavaScript, cookies, and caching enabled.
 
-The app records requests from all tabs before the first collection request and stops further actions on a challenge, denial, relevant error, time limit, or interruption. It also recognizes a Turnstile verification page when expected Studio content is absent, even if the HTTP status is 200; the presence of a widget beside accessible content alone is not a denial. A request count describes what the browser observed; it does not establish a Cloudflare request limit. Settings and public IP details are supplied by the person running the trial. Connection changes and Cloudflare configuration remain outside the app.
-
-The implementation follows [the application plan](PLAN__02_application_design.md) and is tracked in [issue #9](https://github.com/birkin/playwright_access_checker/issues/9). The repository began with the [script_project template](https://github.com/birkin/birkin_coding_tools/tree/main/script_project/).
+The app records requests from all tabs before the first collection request and stops further actions on a challenge, denial, relevant error, time limit, or interruption. A request count describes what the browser observed; it does not establish the website's request limit. Settings and public IP details are supplied by the person running the trial. The app does not change the internet connection or the website's traffic rules.
 
 Contents:
 
@@ -61,10 +60,6 @@ uv run ./main.py bdr:nz9qn2kb --workflow tabs --seed 42
 uv run ./main.py bdr:nz9qn2kb --workflow return --seed 42
 ```
 
-The "tabs" option, with the default settings, opens the Herbarium collections page at a url that displays 50 items. It then simulates right-clicking every other item (about 1 click per second) to open a total of 20 tabs. It then goes to each tab, one after another, scrolling down the page, spending about 5-seconds on each page.
-
-The "return" option, with the default settings, opens the Herbarium collections page at a url that displays 50 items (same so far). It then opens up an item, spends about 5-seconds scrolling through it, then returns to the collection-page, and opens another item -- going through a total of 20 items.
-
 ### Other usage notes
 
 The `--preview` option validates settings and checks the output location without launching a browser or making network requests:
@@ -87,7 +82,7 @@ Settings take priority in this order: command-line options, environment variable
 | Setting / option | Default and meaning |
 | --- | --- |
 | `WORKFLOW` / `--workflow` | Required: `tabs` or `return`. |
-| `CF_SETTINGS_LABEL`, `CF_SETTINGS_NOTES` | Required label and description; `unknown` is allowed. Corresponding options use lowercase names with hyphens. |
+| `CF_SETTINGS_LABEL`, `CF_SETTINGS_NOTES` | Required label and description of the vendor's traffic settings; `unknown` is allowed. Corresponding options use lowercase names with hyphens. |
 | `OPEN_INTERVAL_SECONDS`, `OPEN_JITTER_SECONDS` | `1.0`, `0.1`: seconds between actual opening starts in `tabs`, with independent uniform variation. Delays do not cause later openings to speed up. |
 | `VIEW_SECONDS`, `VIEW_JITTER_SECONDS` | `5.0`, `0.5`: total viewing duration, including one-second pauses and scrolls of 80% of the visible height. |
 | `SELECTION_START` | `1`: select positions 1, 3, 5; use `2` for positions 2, 4, 6. |
@@ -100,9 +95,17 @@ Settings take priority in this order: command-line options, environment variable
 | `PROXY_SERVER` | Optional `http`, `https`, or `socks5` server with a port, prepared before the trial. Credentials use separate `PROXY_USERNAME` and `PROXY_PASSWORD` environment values. Authenticated SOCKS5 is unsupported by Chromium. |
 | `OUTPUT_DIR` | `../runs`; must remain outside this Git repository. |
 
-All timing values must be finite. Targets must be positive, and variation must be nonnegative and smaller than the target. Explicit opening-timing options are rejected for `return`; opening-timing values from the environment or `.env` are shown as unused. Use a new invocation for another workflow, timing target, or connection.
+The `JITTER` settings are an effort to provide a touch of variation in the timings. So in the "tabs" workflow, the goal is for the user to be open "roughly" one tab-per-second; the give-or-take is the "jitter".
 
-Studio's current adapter uses `.item-thumbnail` links, the page-size and sort dropdowns, and “Back to Results” when available. The first listing must actually show page 1 and 50 per page. A return that loses the 50-item setting gets one restoration attempt through the actual dropdown. Changed sorting, filters, or item order stop the trial. Scrolling uses `window.scrollBy` to target the outer page, keeping embedded viewer controls untouched. Additional listing pages, collection nesting, downloads, viewer controls, challenge solving, and automatic retries are excluded.
+Enter timing values in seconds, including decimal values such as `0.5` or `1.25`; values such as infinity or `NaN` (not a number) are not allowed. The time between openings, viewing time, and time limits must each be greater than zero. Random variation must be zero or greater and less than the corresponding opening or viewing time. For example, a viewing time of 5 seconds allows variation of 0 or 1 second, but not 5 seconds. With the `return` workflow, passing `--open-interval-seconds` or `--open-jitter-seconds` causes an error. The same settings in environment variables or `.env` are listed as unused. Run the command again to try a different workflow, timing setting, or internet connection.
+
+
+## Implementation notes
+
+The app finds item links in Studio's thumbnail images (`.item-thumbnail`), checks the dropdowns for items per page and sort order, and follows “Back to Results” when that link is available. Before opening items, it checks that the collection shows page 1 with 50 items per page selected. If returning from an item changes the items-per-page setting, the app tries once to select 50 again using the dropdown. The trial stops if the sort order, filters, or item order change.
+
+The app scrolls the main browser page without using controls inside an embedded item viewer. It does not visit additional pages of collection results, browse collections within collections, download files, operate viewer controls, solve verification challenges, or automatically retry failed actions.
+
 
 ## Results and interpretation
 
@@ -116,13 +119,15 @@ Durations use a monotonic clock. Dates use `America/New_York` with the numeric o
 
 The browser closes after results are saved. Press Ctrl-C to stop and retain evidence. Exit status is `0` for a completed workflow, `1` for interference or an incomplete trial, `130` for interruption, and `2` for invalid arguments. Missing Chromium binaries produce a saved startup-error report; install the browser with the command above.
 
-Rebuild a report from local saved events without launching a browser:
+Rebuild a `summary.md` report from local saved events without launching a browser:
 
 ```bash
 uv run ./main.py --rebuild-report ../runs/TRIAL_ID
 ```
 
-Copy reviewed comparison rows into a Markdown table in the parent `runs` directory so their relative report links work. Keep repetitions visible. Before sharing any material, review local URLs, notes, and public IP information. Credentials, cookies, full request headers, response bodies, screenshots, traces, and saved browser sessions are not recorded. Unknown URL query values and Cloudflare verification tokens in URL paths are removed. Requests after the stopping signal remain identifiable and do not enter counts measured at that signal.
+Optional: To compare several trials side by side, you can copy their comparison rows into a Markdown table saved in `../runs`. Saving the table there keeps the links to individual reports working. Keep a separate row for each trial, including repeated trials with the same settings. Before sharing reports or other output, check website addresses, notes, and public IP information for anything you do not want to share.
+
+The app does not save login credentials, cookies, complete request headers, response bodies, screenshots, browser traces, or browser sessions. It removes values from URL query parameters it does not recognize. Any requests recorded after the app decides to stop the trial are marked as occurring after that decision. They are excluded from the request counts calculated at the time of that decision.
 
 ## Tests
 
