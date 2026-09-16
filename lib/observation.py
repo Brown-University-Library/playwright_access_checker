@@ -131,10 +131,11 @@ class Observer:
                 self.on_page(page)
             role_url = request.url if request.resource_type == 'document' or page is None else page.url
             role = 'overview' if '/studio/collections/' in role_url else 'item' if '/studio/item/' in role_url else 'unknown'
-            redirected = self.requests.get(request.redirected_from, {})
+            previous_request = request.redirected_from
+            redirected = self.requests.get(previous_request, {}) if previous_request is not None else {}
             details = {
                 'request_id': f'request-{len(self.requests) + 1}',
-                'tab_id': self.pages.get(page),
+                'tab_id': self.pages.get(page) if page is not None else None,
                 'url': safe_url(request.url),
                 'hostname': parts.hostname,
                 'included_host': included,
@@ -220,7 +221,7 @@ class Observer:
 
     def bind_requests(self) -> None:
         """
-        Adds late tab attribution without recounting early popup requests.
+        Connects requests and item attempts to tabs without requiring an initial request event.
         Called by: poll()
         """
         for request, record in list(self.requests.items()):
@@ -232,14 +233,30 @@ class Observer:
                     self.recorder.emit('request_tab', request_id=record['request_id'], tab_id=record['tab_id'])
         for attempt in self.attempts:
             if attempt.page is None:
-                for request, record in list(self.requests.items()):
-                    original = request
-                    while original.redirected_from is not None:
-                        original = original.redirected_from
-                    if original.url == attempt.url and record['tab_id']:
-                        attempt.page = self.request_page(request)
-                        self.recorder.emit('attempt_tab', attempt_id=attempt.attempt_id, tab_id=record['tab_id'])
-                        break
+                attempt.page = self.find_attempt_page(attempt)
+                if attempt.page is not None:
+                    self.recorder.emit('attempt_tab', attempt_id=attempt.attempt_id, tab_id=self.pages[attempt.page])
+
+    def find_attempt_page(self, attempt: Attempt) -> Page | None:
+        """
+        Matches one unassigned tab using observed requests or the tab's current URL.
+        Called by: bind_requests()
+        """
+        candidates: set[Page] = set()
+        for request, record in list(self.requests.items()):
+            original = request
+            while original.redirected_from is not None:
+                original = original.redirected_from
+            if original.url == attempt.url and record['tab_id']:
+                page = self.request_page(request)
+                if page is not None:
+                    candidates.add(page)
+        if not candidates:
+            candidates = {page for page in self.pages if page.url == attempt.url}
+        assigned = {item.page for item in self.attempts if item is not attempt}
+        candidates = {page for page in candidates if page not in assigned and not page.is_closed()}
+        matched = next(iter(candidates)) if len(candidates) == 1 else None
+        return matched
 
     def guard(self) -> None:
         """
@@ -310,7 +327,8 @@ class Observer:
                     if record['tab_id'] == self.pages[page] and record['resource_type'] == 'document'
                 ]
                 document = documents[-1] if documents else {}
-                response = self.responses.get(document.get('request_id'), {})
+                request_id = document.get('request_id')
+                response = self.responses.get(request_id, {}) if request_id is not None else {}
                 self.recorder.stop(
                     'verification_required' if verification else 'denial_page',
                     tab_id=self.pages[page],
@@ -329,11 +347,19 @@ class Observer:
             if not attempt.ready and attempt.page is not None and content_ready(attempt.page, 'item'):
                 self.guard()
                 attempt.ready = True
+                if not attempt.document_received:
+                    note = (
+                        'Initial page responses were not observed for some items. '
+                        'Their HTTP status is unknown, and request counts may be incomplete.'
+                    )
+                    if note not in self.recorder.metadata['known_unknowns']:
+                        self.recorder.metadata['known_unknowns'].append(note)
                 self.recorder.emit(
                     'item_ready',
                     attempt_id=attempt.attempt_id,
                     tab_id=self.pages[attempt.page],
                     url=safe_url(attempt.page.url),
+                    document_response_observed=attempt.document_received,
                 )
                 self.recorder.emit(
                     'visit_ready',
@@ -342,8 +368,15 @@ class Observer:
                     url=safe_url(attempt.page.url),
                     title=attempt.page.title(),
                 )
-            if time.monotonic() - attempt.started >= self.settings.navigation_timeout_seconds and (
-                attempt.page is None or not attempt.document_received
+            if (
+                not attempt.ready
+                and time.monotonic() - attempt.started >= self.settings.navigation_timeout_seconds
+                and (attempt.page is None or not attempt.document_received)
             ):
-                self.recorder.stop('page_opening_timeout', attempt_id=attempt.attempt_id)
+                self.recorder.stop(
+                    'page_opening_timeout',
+                    attempt_id=attempt.attempt_id,
+                    tab_id=self.pages.get(attempt.page) if attempt.page is not None else None,
+                    url=safe_url(attempt.page.url if attempt.page is not None else attempt.url),
+                )
                 self.guard()

@@ -7,10 +7,29 @@ import tempfile
 import unittest
 from unittest.mock import PropertyMock, patch
 
+from playwright.sync_api import Request, Response
+
 from lib.browser_flow import run_trial
 from lib.config import Settings
+from lib.observation import Observer
 from lib.results import rebuild_report
 from tests.local_site import LocalSite
+
+
+class MissingItemRequestsObserver(Observer):
+    def on_request(self, request: Request) -> None:
+        """
+        Checks behavior when initial item-page requests are never reported.
+        """
+        if request.resource_type != 'document' or '/studio/item/' not in request.url:
+            super().on_request(request)
+
+    def on_response(self, response: Response) -> None:
+        """
+        Checks behavior when initial item-page responses are also absent.
+        """
+        if response.request.resource_type != 'document' or '/studio/item/' not in response.url:
+            super().on_response(response)
 
 
 class TestBrowser(unittest.TestCase):
@@ -108,6 +127,46 @@ class TestBrowser(unittest.TestCase):
         actions = [event['kind'] for event in recorder.events if event['kind'] in {'item_open', 'view_start', 'return_open'}]
         self.assertEqual(actions, ['item_open', 'view_start', 'return_open'] * 3)
         self.assertEqual([item['position'] for item in data['selected']], [1, 3, 5])
+
+    def test_tabs_scroll_without_initial_request_events(self) -> None:
+        """
+        Checks loaded tabs are viewed and scrolled even when their initial requests are missing.
+        """
+        with patch('lib.browser_flow.Observer', MissingItemRequestsObserver):
+            recorder, data = self.run_case(mode='long', view_seconds=1.2, navigation_timeout_seconds=0.7)
+        self.assertEqual(data['stop_reason'], 'workflow_complete', data.get('stop'))
+        self.assertEqual(data['analysis']['totals']['item_successes'], 3)
+        self.assertEqual(data['analysis']['totals']['completed_views'], 3)
+        bindings = [event for event in recorder.events if event['kind'] == 'attempt_tab']
+        self.assertEqual(len(bindings), 3)
+        self.assertEqual(len({event['tab_id'] for event in bindings}), 3)
+        views = [event for event in recorder.events if event['kind'] == 'view_end']
+        self.assertEqual([event['attempt_id'] for event in views], ['item-1', 'item-2', 'item-3'])
+        self.assertTrue(all(event['completed'] and event['scrolls'] >= 1 for event in views))
+        documents = [
+            event for event in recorder.events if event['kind'] == 'request' and event['resource_type'] == 'document'
+        ]
+        self.assertEqual(len(documents), 1)
+        self.assertEqual(data['analysis']['totals']['page_requests'], 1)
+        report = (recorder.directory / 'summary.md').read_text()
+        rows = [line for line in report.splitlines() if '| item open |' in line]
+        self.assertEqual(len(rows), 3)
+        self.assertTrue(all('unavailable' not in row and row.endswith('| ready |') for row in rows))
+        self.assertIn('request counts may be incomplete', report)
+        self.assertEqual(data['analysis'], rebuild_report(recorder.directory)['analysis'])
+
+    def test_missing_request_does_not_make_empty_content_ready(self) -> None:
+        """
+        Checks a tab without item content still times out when request events are missing.
+        """
+        with patch('lib.browser_flow.Observer', MissingItemRequestsObserver):
+            recorder, data = self.run_case(mode='empty_item', max_items=1, navigation_timeout_seconds=0.4)
+        self.assertEqual(data['stop_reason'], 'page_opening_timeout', data.get('stop'))
+        self.assertEqual(data['analysis']['totals']['item_successes'], 0)
+        self.assertEqual(data['analysis']['totals']['completed_views'], 0)
+        self.assertEqual(data['stop']['tab_id'], 'tab-2')
+        self.assertTrue(data['stop']['url'].endswith('/studio/item/bdr:1/'))
+        self.assertFalse(any(event['kind'] == 'view_start' for event in recorder.events))
 
     def test_return_restores_actual_page_size_control(self) -> None:
         """
